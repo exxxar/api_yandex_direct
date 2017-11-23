@@ -3,6 +3,7 @@
 Route::group(['prefix' => 'test'], function () {
     Route::group(['prefix' => 'apidirect'], function () {
         Route::get('/','ApiDirectController@main');
+        Route::get('/code/{code?}','ApiDirectController@getCode');
 
         Route::group(['prefix' => 'dictionary'], function () {
             Route::get('/get/{param}','ApiDirectController@getDictionary');

@@ -39,17 +39,21 @@ use Biplane\YandexDirect\Api\V5\Contract\TextCampaignSearchStrategyAdd;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignSearchStrategyTypeEnum;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignStrategyAdd;
 use Biplane\YandexDirect\Api\V5\Dictionaries;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
 use Illuminate\Http\Request;
 use Biplane\YandexDirect\Api\V5\Contract\AdFieldEnum;
 use Biplane\YandexDirect\Api\V5\Contract\AdsSelectionCriteria;
 use Biplane\YandexDirect\Api\V5\Contract\GetAdsRequest;
 use Biplane\YandexDirect\Api\V5\Contract\StateEnum;
 use Biplane\YandexDirect\User;
+use Mockery\Exception;
 
 
 class ApiDirectController extends Controller
 {
 
+    //yandex api injection
     private $api;
 
     public function __construct(YandexApi $api)
@@ -57,10 +61,52 @@ class ApiDirectController extends Controller
         $this->api = $api;
     }
 
+    public function getCode($code = "")
+    {
+
+        $client_id = env('APIDIRECT_CLIENT_ID');
+        $client_secret = env('APIDIRECT_CLIENT_SECRET');
+
+        if (!empty($code)) {
+
+            try {
+                $client = new Client();
+
+                $result = $client->request('POST', 'https://oauth.yandex.ru/token', [
+                    'form_params' => [
+                        'grant_type' => 'authorization_code',
+                        'code' => $code,
+                        'client_id' => $client_id,
+                        'client_secret' => $client_secret
+                    ],
+                    'headers' => [
+                        "Content-type", "application/x-www-form-urlencoded"
+                    ],
+
+                ]);
+
+
+                return view("api.token", [
+                    "token" => json_decode($result->getBody()->getContents())->access_token
+                ]);
+            }catch(ClientException $e){
+                return view("api.token", [
+                    "error" => $e,
+                    "link" => 'https://oauth.yandex.ru/authorize?response_type=code&client_id=' . $client_id
+                ]);
+            }
+
+        } else {
+            return view("api.token", [
+                "link" => 'https://oauth.yandex.ru/authorize?response_type=code&client_id=' . $client_id
+            ]);
+        }
+
+    }
+
 
     public function main()
     {
-
         $response = $this->api->getCampaingAll();
         return view("api.index", ["result" => $response->getCampaigns()]);
     }
@@ -77,7 +123,6 @@ class ApiDirectController extends Controller
         $regions = explode(',', implode(',', $request->get("regions")));//explode(',',$request->get("regions"));
 
         $request = $this->api->addGroup($campaingId, $regions);
-
         return redirect("/test/apidirect/groups/list/" . $campaingId);
 
     }
@@ -139,7 +184,6 @@ class ApiDirectController extends Controller
         $regions = explode(',', implode(',', $request->get("regions")));//explode(',',$request->get("regions"));
 
         $response = $this->api->createNewWordstatReport($regions, $words);
-
         return redirect("/test/apidirect/keywords/list/" . $groupId);
     }
 
@@ -147,7 +191,6 @@ class ApiDirectController extends Controller
     {
 
         $response = $this->api->getKeywordsList($groupId);
-
         return view("api.wordstat.index", [
             "result" => $this->api->getWordstatReport($id),
             "keywords" => $response,
@@ -158,7 +201,6 @@ class ApiDirectController extends Controller
 
     public function deleteWordstatReport($id, $groupId)
     {
-
         $response = $this->api->deleteWordstatReport($id);
         return redirect("/test/apidirect/keywords/list/" . $groupId);
     }
@@ -191,13 +233,10 @@ class ApiDirectController extends Controller
     {
         $response = $this->api->getBidData($groupId);
         return view("api.bids.index", ["result" => $response]);
-
-
     }
 
     public function getCampaingGroups($ids)
     {
-
         $response = $this->api->getCampaingGroups($ids);
 
         return view("api.campaing.list", [

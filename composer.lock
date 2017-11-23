@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "content-hash": "e310643e63707a3c387bbb7200ca6e6f",
+    "content-hash": "6995e98853c146206a69084d8f7093ff",
     "packages": [
         {
             "name": "biplane/yandex-direct",

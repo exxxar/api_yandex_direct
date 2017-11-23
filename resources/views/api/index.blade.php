@@ -5,6 +5,7 @@
 
 
 @section('content')
+
     <div class="row" >
         <div class="col col-md-8 col-md-offset-3 ">
             <form action="{{url('/test/apidirect/campaing/add')}}" method="post">
