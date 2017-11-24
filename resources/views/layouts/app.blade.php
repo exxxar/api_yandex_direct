@@ -13,7 +13,7 @@
 
         <ul class="nav navbar-nav pull-right">
             <li><a href="{{url('/test/apidirect/code')}}" target="_blank">Получить КОД</a></li>
-        </ul> 
+        </ul>
     </div>
 </nav>
 

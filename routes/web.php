@@ -32,7 +32,6 @@ Route::group(['prefix' => 'test'], function () {
            // Route::get('/remove/{groupId}/{campaingId}','ApiDirectController@removeGroup');
         });
 
-
         Route::group(['prefix' => 'wordstat'], function () {
             Route::post('/create','ApiDirectController@createNewWordstatReport');
             Route::get('/delete/{id}/{groupId}','ApiDirectController@deleteWordstatReport');
