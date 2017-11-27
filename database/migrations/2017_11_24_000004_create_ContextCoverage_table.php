@@ -24,6 +24,7 @@ class CreateContextcoverageTable extends Migration
             $table->integer('probability')->nullable();
             $table->integer('price')->nullable();
             $table->unsignedInteger('Keywords_id');
+            $table->dateTime('updated_at')->nullable();
 
             $table->index(["Keywords_id"], 'fk_ContextCoverage_Keywords_idx');
 

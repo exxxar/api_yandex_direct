@@ -22,6 +22,7 @@ class CreateKeywordsTable extends Migration
             $table->engine = 'InnoDB';
             $table->increments('id');
             $table->string('keyword');
+            $table->integer('keyword_id')->nullable();
             $table->integer('impressions_per_month')->nullable();
             $table->integer('ad_group_id')->nullable();
             $table->integer('bid')->nullable();
@@ -32,6 +33,10 @@ class CreateKeywordsTable extends Migration
             $table->integer('search_prices_fb')->nullable();
             $table->integer('min_search_price')->nullable();
             $table->integer('current_search_price')->nullable();
+            $table->dateTime('add_date')->nullable();
+            $table->dateTime('check_date')->nullable();
+            $table->tinyInteger('check')->nullable();
+            $table->dateTime('updated_at')->nullable();
         });
     }
 

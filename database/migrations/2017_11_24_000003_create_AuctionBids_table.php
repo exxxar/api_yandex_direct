@@ -25,6 +25,7 @@ class CreateAuctionbidsTable extends Migration
             $table->integer('bid')->nullable();
             $table->integer('price')->nullable();
             $table->unsignedInteger('Keywords_id');
+            $table->dateTime('updated_at')->nullable();
 
             $table->index(["Keywords_id"], 'fk_AuctionBids_Keywords1_idx');
 

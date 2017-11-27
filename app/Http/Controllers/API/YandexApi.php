@@ -44,6 +44,7 @@ use Biplane\YandexDirect\Api\V5\Contract\TextCampaignSearchStrategyAdd;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignSearchStrategyTypeEnum;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignStrategyAdd;
 use Biplane\YandexDirect\Api\V5\Dictionaries;
+use Exception;
 use Illuminate\Http\Request;
 use Biplane\YandexDirect\Api\V5\Contract\AdFieldEnum;
 use Biplane\YandexDirect\Api\V5\Contract\AdsSelectionCriteria;
@@ -263,6 +264,26 @@ class YandexApi
             ->setKeywords([$item]);
 
         return $this->user->getKeywordsService()->add($request);
+    }
+
+    public function addKeyword($groupId, $word, $isAutotargeting)
+    {
+        $keyword = $isAutotargeting ? "---autotargeting" : $word;
+        $item = KeywordAddItem::create()
+            ->setKeyword($keyword)
+            ->setAdGroupId($groupId);
+
+        return $item;
+
+    }
+
+    public function doKeywordRequest($keywords){
+
+            $request = AddKeywordsRequest::create()
+                ->setKeywords($keywords);
+
+            return $this->user->getKeywordsService()->add($request);
+
     }
 
     public function getBidData($groupId)

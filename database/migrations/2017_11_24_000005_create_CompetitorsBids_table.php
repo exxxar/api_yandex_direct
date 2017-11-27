@@ -23,8 +23,10 @@ class CreateCompetitorsbidsTable extends Migration
             $table->increments('id');
             $table->integer('element')->nullable();
             $table->unsignedInteger('Keywords_id');
+            $table->dateTime('updated_at')->nullable();
 
             $table->index(["Keywords_id"], 'fk_CompetitorsBids_Keywords1_idx');
+
 
             $table->foreign('Keywords_id', 'fk_CompetitorsBids_Keywords1_idx')
                 ->references('id')->on('Keywords')
