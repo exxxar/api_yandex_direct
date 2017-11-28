@@ -24,6 +24,7 @@ class CreateKeywordsTable extends Migration
             $table->string('keyword');
             $table->integer('keyword_id')->nullable();
             $table->integer('impressions_per_month')->nullable();
+            $table->integer('campaing_id')->nullable();
             $table->integer('ad_group_id')->nullable();
             $table->integer('bid')->nullable();
             $table->integer('context_bid')->nullable();
