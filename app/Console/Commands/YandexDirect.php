@@ -102,6 +102,20 @@ class YandexDirect extends Command
             return;
 
         }
+        //очистка чек-ов и по новой пройтись с фильтром [!]
+        if ($this->argument("type")=="11") {
+            //повторно отмечаем все слова не проверенными, чтоб повторно пройтись по ним и заполнить группы
+            $words = Keywords::where('check', 1)->get();
+            foreach ($words as $w){
+                if ($w->impressions_per_month==null){
+                    $w->check = null;
+                    $w->save();
+                }
+            }
+
+            $this->log->info('Все check у слов успешно сброшены!');
+            $yandex_type = 1;
+        }
 
         $this->log->info('Процесс получения информация из Yandex.Direct начался.');
 
@@ -150,14 +164,14 @@ class YandexDirect extends Command
                 $this->api->createNewWordstatReport([1], [$w->keyword]);
             } else {
                 $buf = explode(' ', $w->keyword);
-                $splited_keywords = "\"[";
+                $splited_keywords = "'[";
                 foreach ($buf as $b) {
                     if (strlen($b)<=0)
                         continue;
                     //если слово идёт с "+", то это и следующие слова идут без "!"
                     $splited_keywords .= (strrpos(trim($b), "+")===False ?"!$b " :"$b " );
                 }
-                $splited_keywords .= "]\"";
+                $splited_keywords .= "]'";
                 $this->api->createNewWordstatReport([1], [$splited_keywords]);
             }
 

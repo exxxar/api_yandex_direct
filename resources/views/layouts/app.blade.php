@@ -10,6 +10,9 @@
         <div class="navbar-header">
             <a class="navbar-brand" href="{{url('/test/apidirect/')}}">Главная</a>
         </div>
+        <ul class="nav navbar-nav ">
+            <li><a href="{{url('/test/apidirect/pdf/list')}}" target="_blank">Получить PDF-отчет</a></li>
+        </ul>
 
         <ul class="nav navbar-nav pull-right">
             <li><a href="{{url('/test/apidirect/code')}}" target="_blank">Получить КОД</a></li>

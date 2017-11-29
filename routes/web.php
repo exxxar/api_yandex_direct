@@ -2,6 +2,10 @@
 
 Route::group(['prefix' => 'test'], function () {
     Route::group(['prefix' => 'apidirect'], function () {
+
+        Route::get('/pdf/list','ApiDirectController@getPdfList');
+        Route::get('/pdf/gen/{groupId}','ApiDirectController@generatePDF');
+
         Route::get('/','ApiDirectController@main');
         Route::get('/code/{code?}','ApiDirectController@getCode');
 

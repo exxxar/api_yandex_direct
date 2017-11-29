@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\API\YandexApi;
+use App\Keywords;
+use Barryvdh\DomPDF\PDF;
 use Biplane\YandexDirect\Api\V4\Contract\NewWordstatReportInfo;
 use Biplane\YandexDirect\Api\V4\Contract\WordstatReportInfo;
 use Biplane\YandexDirect\Api\V5\Contract\AddAdGroupsRequest;
@@ -47,6 +49,7 @@ use Biplane\YandexDirect\Api\V5\Contract\AdsSelectionCriteria;
 use Biplane\YandexDirect\Api\V5\Contract\GetAdsRequest;
 use Biplane\YandexDirect\Api\V5\Contract\StateEnum;
 use Biplane\YandexDirect\User;
+use Illuminate\Support\Facades\DB;
 use Mockery\Exception;
 
 
@@ -55,10 +58,12 @@ class ApiDirectController extends Controller
 
     //yandex api injection
     private $api;
+    private $pdf;
 
-    public function __construct(YandexApi $api)
+    public function __construct(YandexApi $api, PDF $pdf)
     {
         $this->api = $api;
+        $this->pdf = $pdf;
     }
 
     public function getCode($code = "")
@@ -247,5 +252,30 @@ class ApiDirectController extends Controller
 
     }
 
+    public function generatePDF($groupId){
+        $keyword = Keywords::where('ad_group_id',"$groupId")->get();
+        ini_set('max_execution_time', 30000);
+        $pdf = $this->pdf->loadView('api.pdf.pdf', ["keywords"=>$keyword]);
+        return $pdf->download('invoice.pdf');
+    }
 
+    public function getPdfList(){
+/*     SELECT
+    `ad_group_id`,
+    COUNT(`ad_group_id`)
+FROM
+    `keywords`
+GROUP BY
+    `ad_group_id`
+HAVING
+    `ad_group_id` > 0
+ORDER BY
+    COUNT(`ad_group_id`)*/
+       $list =  Keywords::select('ad_group_id', DB::raw('count(ad_group_id)'))
+            ->groupBy('ad_group_id')
+            ->havingRaw("count(ad_group_id) > 0")
+            ->orderBy('count(ad_group_id)', 'asc')
+            ->get();
+       return view("api.pdf.list",["result"=>$list,"index"=>0]);
+    }
 }

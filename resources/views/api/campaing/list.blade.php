@@ -60,6 +60,7 @@
                     <td><a href={{url('/test/apidirect/groups/remove')}}/{{$group->getId()}}/{{$campaingId}}>удалить</a>,
                         <a href={{url('/test/apidirect/keywords/add')}}/{{$group->getId()}}>добавить ключевые слова</a>
 
+
                     </td>
                 </tr>
 
