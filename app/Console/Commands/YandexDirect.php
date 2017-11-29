@@ -9,6 +9,7 @@ use App\Http\Controllers\API\YandexApi;
 use App\Http\Controllers\ApiDirectController;
 use App\Keywords;
 use Biplane\YandexDirect\Api\V5\Contract\DictionaryNameEnum;
+use Biplane\YandexDirect\Exception\LogicException;
 use Illuminate\Console\Command;
 
 use Illuminate\Support\Carbon;
@@ -65,21 +66,42 @@ class YandexDirect extends Command
         $yandex_type = $this->argument('type');
         error_log($yandex_type);
 
-                /*
-                 * Этапы:
-                 * 0)Пока в бд нет слов - берем слова из файла, закончились слова из файла - берем слова из бд
-                 * 1)создание запроса к вордстату
-                 * 2)выбор всех схожих слов (без минус фраз)
-                 * 3)удаление всех групп в кампании
-                 * 4)создание группы
-                 * 5)добавление всех слов из отчета в запрос
-                 * 6)запрос ставок на слова группы
-                 * 7)обновление данных в бд с учетом инфы из предидущего запроса
-                 *
-                 * лимит кампаний: 3000
-                 * лимит групп в кампании: 10000
-                 * лимит слов в группе: 200
-                 */
+
+
+    /*
+     * Этапы:
+     * 0)Пока в бд нет слов - берем слова из файла, закончились слова из файла - берем слова из бд
+     * 1)создание запроса к вордстату
+     * 2)выбор всех схожих слов (без минус фраз)
+     * 3)удаление всех групп в кампании
+     * 4)создание группы
+     * 5)добавление всех слов из отчета в запрос
+     * 6)запрос ставок на слова группы
+     * 7)обновление данных в бд с учетом инфы из предидущего запроса
+     *
+     * лимит кампаний: 3000
+     * лимит групп в кампании: 10000
+     * лимит слов в группе: 200
+     */
+
+        if ($this->argument("type")=="reset") {
+            //повторно отмечаем все слова не проверенными, чтоб повторно пройтись по ним и заполнить группы
+            $words = Keywords::where('check', 1)->get();
+            foreach ($words as $w){
+                if ($w->impressions_per_month==null){
+                    $w->check = null;
+                    $w->keyword_id = null;
+                    $w->campaing_id = null;
+                    $w->ad_group_id = null;
+                    $w->save();
+                }
+            }
+
+            $this->log->info('Все слова успешно сброшены!');
+           // $yandex_type = 0;
+            return;
+
+        }
 
         $this->log->info('Процесс получения информация из Yandex.Direct начался.');
 
@@ -200,44 +222,58 @@ class YandexDirect extends Command
                 //можем тут сделать создание компаний только если заполнена предидущая компания
                 //компания может содержать 9999 объектов  групп
 
-                $idCampaign = $idGroup = $companies = $groups = null;
+                $idCampaign = $idGroup = $companies = $groups = $kw_in_groups = null;
 
-                $companies = Keywords::select('campaing_id', DB::raw('count(campaing_id)'))
-                    ->groupBy('campaing_id')
-                    ->havingRaw("count(campaing_id) < ".self::MAX_CAMPAINGS." and count(campaing_id) >= 1")
-                    ->orderBy('count(campaing_id)', 'desc')
+                $groups = Keywords::select('ad_group_id','campaing_id', DB::raw('count(ad_group_id)'))
+                    ->groupBy('ad_group_id','campaing_id')
+                    ->havingRaw("count(ad_group_id) <= ".self::MAX_GROUPS." and count(ad_group_id) >=1")
+                    ->orderBy('count(ad_group_id)', 'desc')
                     ->first();
 
-                if (!empty($companies)) {
-                    //если кампании есть, то просто берем айдишник из запроса и не создаем запрос к апи
-                    $idCampaign = $companies->campaing_id;
+                if (!empty($groups)&&$groups["count(ad_group_id)"]<self::MAX_GROUPS) {
+                    //пока в компании групп меньше чем лимит, берем айди этой компании
 
-                    $groups = Keywords::select('ad_group_id','campaing_id', DB::raw('count(ad_group_id)'))
-                        ->where('campaing_id', $idCampaign)
-                        ->groupBy('ad_group_id','campaing_id')
-                        ->havingRaw("count(ad_group_id) < ".self::MAX_GROUPS." and count(ad_group_id) >=1")
-                        ->orderBy('count(ad_group_id)', 'desc')
+                    $idCampaign = $groups->campaing_id;
+
+                    $kw_in_groups = Keywords::select('ad_group_id',DB::raw('count(keyword_id)'))
+                        ->groupBy('ad_group_id')
+                        ->where("ad_group_id",$groups["ad_group_id"])
                         ->first();
                 }
                 else{
                     //если кампаний нет или нет подходящей компании, то создаем
-                    $idCampaign = $this->api->addCampain("test company ".((new Carbon())->now()))
-                        ->getAddResults()[0]
-                        ->getId();
-                }
-                sleep(10);
+                    try {
+                        error_log("test 2");
+                        $idCampaign = $this->api->addCampain("test company ".((new Carbon())->now()))
+                            ->getAddResults()[0]
+                            ->getId();
+                    }
+                    catch (LogicException $exception){
+                        $this->log->error($exception->getTraceAsString());
 
-                if (!empty($groups)){
+                    }
+                }
+
+
+                if (!empty($kw_in_groups)&&$kw_in_groups["count(keyword_id)"]<self::MAX_KEYWORDS){
                     //если найдена подходящая группа, то берем её айди и не создаем новый запрос к апи
-                    $idGroup = $groups->ad_group_id;
+
+                    $idGroup = $kw_in_groups->ad_group_id;
+
                 }
                 else {
                     //добавляем в команию группу
-                    $idGroup = $this->api->addGroup("group_to_campaign_$idCampaign", $idCampaign, [1])
-                        ->getAddResults()[0]
-                        ->getId();
-                }
+                    try {
 
+                        $idGroup = $this->api->addGroup("group_to_campaign_$idCampaign-".((new Carbon())->now()), $idCampaign, [1])
+                            ->getAddResults()[0]
+                            ->getId();
+                    }catch (LogicException $exception){
+                        $this->log->error($exception->getTraceAsString());
+
+                    }
+
+                }
 
                 //формируем слова для массива, который затем будет дбавлен в группу
                 $buf = array();
@@ -248,8 +284,13 @@ class YandexDirect extends Command
                     $kwfg->campaing_id = $idCampaign;
                     $kwfg->save();
                     error_log("$idGroup , $kwfg->keyword");
-                    $item = $this->api->addKeyword($idGroup, $kwfg->keyword, False);
-                    array_push($buf, $item);
+                    try {
+                        $item = $this->api->addKeyword($idGroup, $kwfg->keyword, False);
+                        array_push($buf, $item);
+                    }catch (LogicException $exception){
+                        $this->log->error($exception->getTraceAsString());
+                        continue;
+                    }
                 }
 
                 if (empty($buf)) {
@@ -271,7 +312,16 @@ class YandexDirect extends Command
                 //запрос к Bid-ам
                 //засыпаем на 10 сек
                 sleep(10);
-                $bidData = $this->api->getBidData($idGroup);
+
+                $bidData = null;
+
+                try {
+                    $bidData = $this->api->getBidData($idGroup);
+                }catch (LogicException $exception){
+                    $this->log->error($exception->getTraceAsString());
+                    continue;
+                }
+
                 foreach ($bidData->getBids() as $bid) {
                     $kwwb = Keywords::where('keyword_id', $bid->getKeywordId())->first();
 
