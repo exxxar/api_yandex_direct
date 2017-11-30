@@ -6,16 +6,14 @@
     <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <style>
         .ui-autocomplete {
-            max-height: 100px;
+            max-height: 300px;
             overflow-y: auto;
             /* prevent horizontal scrollbar */
             overflow-x: hidden;
         }
-        /* IE 6 doesn't support max-height
-         * we use height instead, but this forces the menu to always be this tall
-         */
+
         * html .ui-autocomplete {
-            height: 100px;
+            height: 300px;
         }
 
         span[id] {
@@ -50,6 +48,7 @@
             <p>Минимальная ставка, установленная для рекламодателя, при которой возможен показ на поиске <span id="kw_min_search_price"></span></p>
             <p>Текущая цена клика на поиске <span id="kw_current_search_price"></span></p>
             <hr>
+            {{--TODO: сделать вывод из всех таблиц, а не только из одной, связи в модели есть--}}
         </div>
     </div>
 

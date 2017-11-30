@@ -50,6 +50,8 @@
     @endisset
     <hr>
 
+    {{--TODO: сделать вывод из всех таблиц, а не только из одной, связи в модели есть--}}
+
 
               {{--     @if (!empty($kw->competitorsbids))
                         {{var_dump(($kw->competitorsbids->first())[0])}}

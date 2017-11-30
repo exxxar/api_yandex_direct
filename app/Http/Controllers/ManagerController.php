@@ -15,7 +15,7 @@ class ManagerController extends Controller
 
     public function autocomplete(Request $request){
         $term = $request->get("term");
-        $kwords = Keywords::where("keyword","like","$term%")->get();
+        $kwords = Keywords::where("keyword","like","$term%")->limit(100)->get();
         $items = array();
         foreach ($kwords as $kw){
             array_push($items,array("value"=>$kw->keyword,"id"=>$kw->id));

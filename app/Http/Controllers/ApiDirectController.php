@@ -260,17 +260,6 @@ class ApiDirectController extends Controller
     }
 
     public function getPdfList(){
-/*     SELECT
-    `ad_group_id`,
-    COUNT(`ad_group_id`)
-FROM
-    `keywords`
-GROUP BY
-    `ad_group_id`
-HAVING
-    `ad_group_id` > 0
-ORDER BY
-    COUNT(`ad_group_id`)*/
        $list =  Keywords::select('ad_group_id', DB::raw('count(ad_group_id)'))
             ->groupBy('ad_group_id')
             ->havingRaw("count(ad_group_id) > 0")

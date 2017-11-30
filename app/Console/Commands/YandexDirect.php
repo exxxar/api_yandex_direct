@@ -9,6 +9,7 @@ use App\Http\Controllers\API\YandexApi;
 use App\Http\Controllers\ApiDirectController;
 use App\Keywords;
 use Biplane\YandexDirect\Api\V5\Contract\DictionaryNameEnum;
+use Biplane\YandexDirect\Exception\ApiException;
 use Biplane\YandexDirect\Exception\LogicException;
 use Illuminate\Console\Command;
 
@@ -161,7 +162,13 @@ class YandexDirect extends Command
             //TODO:тут нужно выбирать слова, чьи сроки check_date+1 месяц меньше текущей даты
 
             if ($yandex_type == 0) {
-                $this->api->createNewWordstatReport([1], [$w->keyword]);
+                try {
+                    $this->api->createNewWordstatReport([1], [$w->keyword]);
+                }
+                catch(ApiException $exception){
+                    $this->log->error($exception->getTraceAsString());
+                    continue;
+                }
             } else {
                 $buf = explode(' ', $w->keyword);
                 $splited_keywords = "\"[";
@@ -173,7 +180,13 @@ class YandexDirect extends Command
                     $splited_keywords .= (strrpos(trim($b), "+")===False ?" !$b " :str_replace('+',' ',$b) );
                 }
                 $splited_keywords .= "]\"";
-                $this->api->createNewWordstatReport([1], [$splited_keywords]);
+                try {
+                    $this->api->createNewWordstatReport([1], [$splited_keywords]);
+                }catch(ApiException $exception){
+                    $this->log->error($exception->getTraceAsString());
+                    continue;
+                }
+
             }
 
             $this->log->info("Создание вордстат репорта  по слову " . $w->keyword . ". Засыпаем на 10 сек.");
@@ -312,18 +325,23 @@ class YandexDirect extends Command
                     $this->log->error("Содержимое массива ключевых слов отсутствует!");
                     continue;
                 }
+                $keywordsIds = null;
 
+                try {
+                    $keywordsIds = $this->api->doKeywordRequest($buf)->getAddResults();//тут получаем добавленные идентификаторы ключевых слов
+                    //по идее тут мы должны добавить их в бд, чтоб было проще добавлять цены по айди ключевого слова, а не только группы
 
-                $keywordsIds = $this->api->doKeywordRequest($buf)->getAddResults();//тут получаем добавленные идентификаторы ключевых слов
-                //по идее тут мы должны добавить их в бд, чтоб было проще добавлять цены по айди ключевого слова, а не только группы
+                    //ставим в соответствие каждому вернувшемуся айдишнику выбранное из бд слово
+                    for ($i = 0; $i < count($keywordsIds); $i++) {
+                        $ki = $keywordsIds[$i]->getId();
+                        $keywords_for_group[$i]->keyword_id = $ki;
+                        $keywords_for_group[$i]->save();
+                    }
 
-                //ставим в соответствие каждому вернувшемуся айдишнику выбранное из бд слово
-                for ($i = 0; $i < count($keywordsIds); $i++) {
-                    $ki = $keywordsIds[$i]->getId();
-                    $keywords_for_group[$i]->keyword_id = $ki;
-                    $keywords_for_group[$i]->save();
+                } catch(ApiException $exception) {
+                    $this->log->error($exception->getMessage());
+                    continue;
                 }
-
                 //запрос к Bid-ам
                 //засыпаем на 10 сек
                 sleep(10);
