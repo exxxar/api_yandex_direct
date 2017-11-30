@@ -164,14 +164,15 @@ class YandexDirect extends Command
                 $this->api->createNewWordstatReport([1], [$w->keyword]);
             } else {
                 $buf = explode(' ', $w->keyword);
-                $splited_keywords = "'[";
+                $splited_keywords = "\"[";
                 foreach ($buf as $b) {
                     if (strlen($b)<=0)
                         continue;
                     //если слово идёт с "+", то это и следующие слова идут без "!"
-                    $splited_keywords .= (strrpos(trim($b), "+")===False ?"!$b " :"$b " );
+                    //$splited_keywords .= (strrpos(trim($b), "+")===False ?"!$b " :"$b " );
+                    $splited_keywords .= (strrpos(trim($b), "+")===False ?" !$b " :str_replace('+',' ',$b) );
                 }
-                $splited_keywords .= "]'";
+                $splited_keywords .= "]\"";
                 $this->api->createNewWordstatReport([1], [$splited_keywords]);
             }
 

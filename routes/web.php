@@ -1,4 +1,7 @@
 <?php
+Route::get('/','ManagerController@index');
+Route::get('/autocomplete','ManagerController@autocomplete');
+Route::post('/getdata','ManagerController@getdata');
 
 Route::group(['prefix' => 'test'], function () {
     Route::group(['prefix' => 'apidirect'], function () {
