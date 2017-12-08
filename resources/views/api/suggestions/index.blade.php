@@ -50,6 +50,7 @@
                     },
                     function (a,b) {
                         console.log(a);
+
                     }
                 );
             });
@@ -65,6 +66,7 @@
                 var words = $("#words").val();
                 words = words +","+ $("#suggestion").val();
                 $("#words").val(words);
+                $("#suggestion").val("");
             });
             $("#getsuggestions").click(function () {
                 var keyword = $("#words").val();

@@ -41,6 +41,7 @@ use Biplane\YandexDirect\Api\V5\Contract\TextCampaignSearchStrategyAdd;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignSearchStrategyTypeEnum;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignStrategyAdd;
 use Biplane\YandexDirect\Api\V5\Dictionaries;
+use Biplane\YandexDirect\Exception\ApiException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
 use Illuminate\Http\Request;
@@ -94,7 +95,7 @@ class ApiDirectController extends Controller
                 return view("api.token", [
                     "token" => json_decode($result->getBody()->getContents())->access_token
                 ]);
-            }catch(ClientException $e){
+            } catch (ClientException $e) {
                 return view("api.token", [
                     "error" => $e,
                     "link" => 'https://oauth.yandex.ru/authorize?response_type=code&client_id=' . $client_id
@@ -252,40 +253,69 @@ class ApiDirectController extends Controller
 
     }
 
-    public function generatePDF($groupId){
-        $keyword = Keywords::where('ad_group_id',"$groupId")->get();
+    public function generatePDF($groupId)
+    {
+        $keyword = Keywords::where('ad_group_id', "$groupId")->get();
         ini_set('max_execution_time', 30000);
-        $pdf = $this->pdf->loadView('api.pdf.pdf', ["keywords"=>$keyword]);
+        $pdf = $this->pdf->loadView('api.pdf.pdf', ["keywords" => $keyword]);
         return $pdf->download('invoice.pdf');
     }
 
-    public function getPdfList(){
-       $list =  Keywords::select('ad_group_id', DB::raw('count(ad_group_id)'))
+    public function getPdfList()
+    {
+        $list = Keywords::select('ad_group_id', DB::raw('count(ad_group_id)'))
             ->groupBy('ad_group_id')
             ->havingRaw("count(ad_group_id) > 0")
             ->orderBy('count(ad_group_id)', 'asc')
             ->get();
-       return view("api.pdf.list",["result"=>$list,"index"=>0]);
+        return view("api.pdf.list", ["result" => $list, "index" => 0]);
     }
 
 
-    public function getSuggestionPage(){
+    public function getSuggestionPage()
+    {
         return view("api.suggestions.index");
     }
 
-    public function getSuggestions(Request $request){
+    public function getSuggestions(Request $request)
+    {
         $words = $request->get("words");
         return $this->api->getKeywordsSuggestion($words);
     }
 
-    public function forecastMain(){
+    public function forecastMain()
+    {
         $result = $this->api->getForecastList();
-        return view("api.forecast.index",["result"=>$result]);
+        $region = $this->api->getDictionaryAll("georegions");
+        return view("api.forecast.index", ["result" => $result, "regions" => $region]);
     }
 
-    public function createForecast(Request $request){
-        $this->api->createNewForecast($request->get("words"));
+    public function createForecast(Request $request)
+    {
+        $regions = explode(',', implode(',', $request->get("regions")));//explode(',',$request->get("regions"));
 
+        $this->api->createNewForecast($request->get("words"), $regions);
+
+        return redirect("/test/apidirect/forecast/");
+    }
+
+    public function getForecast($id)
+    {
+        try {
+            $result = $this->api->getForecastInfo($id);
+            return view("api.forecast.report", ["result" => $result]);
+        } catch (ApiException $apiException) {
+            return redirect("/test/apidirect/forecast/");
+        }
+
+    }
+
+    public function removeForecast($id) {
+        try {
+            $result = $this->api->deleteForecastReport($id);
+        } catch (ApiException $apiException) {
+
+        }
         return redirect("/test/apidirect/forecast/");
     }
 }

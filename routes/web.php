@@ -61,7 +61,9 @@ Route::group(['prefix' => 'test'], function () {
 
         Route::group(['prefix' => 'forecast'], function () {
             Route::get('/','ApiDirectController@forecastMain');
+            Route::get('/get/{id}','ApiDirectController@getForecast');
             Route::post('/get','ApiDirectController@createForecast');
+            Route::get('/remove/{id}','ApiDirectController@removeForecast');
         });
 
     });

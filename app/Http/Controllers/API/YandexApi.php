@@ -336,14 +336,14 @@ class YandexApi
         return $this->user->getApiService()->getKeywordsSuggestion($keywordsSuggestionInfo);
     }
 
-    public function createNewForecast($keyword){
+    public function createNewForecast($keyword,$regions){
         $newForecastInfo = new NewForecastInfo();
         $keyword  = strpos($keyword,",")!=False?explode(",",$keyword):[$keyword];
         for($i=0;$i<count($keyword);$i++)
             $keyword[$i] = trim($keyword[$i]);
 
         $newForecastInfo->setPhrases($keyword);
-        $newForecastInfo->setGeoID([1]);
+        $newForecastInfo->setGeoID($regions);
         $newForecastInfo->setAuctionBids("Yes");
 
 
