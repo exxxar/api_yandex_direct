@@ -54,6 +54,16 @@ Route::group(['prefix' => 'test'], function () {
 
         });
 
+        Route::group(['prefix' => 'suggestions'], function () {
+            Route::get('/','ApiDirectController@getSuggestionPage');
+            Route::post('/get','ApiDirectController@getSuggestions');
+        });
+
+        Route::group(['prefix' => 'forecast'], function () {
+            Route::get('/','ApiDirectController@forecastMain');
+            Route::post('/get','ApiDirectController@createForecast');
+        });
+
     });
 });
 

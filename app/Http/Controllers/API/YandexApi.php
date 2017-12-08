@@ -8,6 +8,8 @@
 
 namespace App\Http\Controllers\API;
 
+use Biplane\YandexDirect\Api\V4\Contract\KeywordsSuggestionInfo;
+use Biplane\YandexDirect\Api\V4\Contract\NewForecastInfo;
 use Biplane\YandexDirect\Api\V4\Contract\NewWordstatReportInfo;
 use Biplane\YandexDirect\Api\V4\Contract\WordstatReportInfo;
 use Biplane\YandexDirect\Api\V5\Contract\AddAdGroupsRequest;
@@ -323,5 +325,41 @@ class YandexApi
         return $this->user->getAdGroupsService()->get($request);
     }
 
+    //получаем подсказки по словам
+    public function getKeywordsSuggestion($keyword){
+        $keywordsSuggestionInfo = new KeywordsSuggestionInfo();
+        $keyword  = strpos($keyword,",")!=False?explode(",",$keyword):[$keyword];
+        for($i=0;$i<count($keyword);$i++)
+            $keyword[$i] = trim($keyword[$i]);
+        $keywordsSuggestionInfo->setKeywords($keyword);
+
+        return $this->user->getApiService()->getKeywordsSuggestion($keywordsSuggestionInfo);
+    }
+
+    public function createNewForecast($keyword){
+        $newForecastInfo = new NewForecastInfo();
+        $keyword  = strpos($keyword,",")!=False?explode(",",$keyword):[$keyword];
+        for($i=0;$i<count($keyword);$i++)
+            $keyword[$i] = trim($keyword[$i]);
+
+        $newForecastInfo->setPhrases($keyword);
+        $newForecastInfo->setGeoID([1]);
+        $newForecastInfo->setAuctionBids("Yes");
+
+
+        return $this->user->getApiService()->createNewForecast($newForecastInfo);
+    }
+
+    public function getForecastInfo($forecastId) {
+        return $this->user->getApiService()->getForecast($forecastId);
+    }
+
+    public function getForecastList(){
+        return $this->user->getApiService()->getForecastList();
+    }
+
+    public function deleteForecastReport($forecastId){
+        return $this->user->getApiService()->deleteForecastReport($forecastId);
+    }
 
 }

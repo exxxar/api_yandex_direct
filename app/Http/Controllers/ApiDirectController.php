@@ -267,4 +267,25 @@ class ApiDirectController extends Controller
             ->get();
        return view("api.pdf.list",["result"=>$list,"index"=>0]);
     }
+
+
+    public function getSuggestionPage(){
+        return view("api.suggestions.index");
+    }
+
+    public function getSuggestions(Request $request){
+        $words = $request->get("words");
+        return $this->api->getKeywordsSuggestion($words);
+    }
+
+    public function forecastMain(){
+        $result = $this->api->getForecastList();
+        return view("api.forecast.index",["result"=>$result]);
+    }
+
+    public function createForecast(Request $request){
+        $this->api->createNewForecast($request->get("words"));
+
+        return redirect("/test/apidirect/forecast/");
+    }
 }

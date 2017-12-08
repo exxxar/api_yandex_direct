@@ -13,6 +13,6 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         //
-        '/autocomplete','/getdata'
+        '/autocomplete','/getdata','test/apidirect/suggestions/get','test/apidirect/forecast/get'
     ];
 }
