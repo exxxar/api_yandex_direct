@@ -2,16 +2,16 @@
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
-class CreateAdpostionsTable extends Migration
+class CreateForecastinfoTable extends Migration
 {
     /**
      * Schema table name to migrate
      * @var string
      */
-    public $set_schema_table = 'AdPostions';
+    public $set_schema_table = 'forecastInfo';
     /**
      * Run the migrations.
-     * @table AdPostions
+     * @table forecastInfo
      *
      * @return void
      */
@@ -21,17 +21,25 @@ class CreateAdpostionsTable extends Migration
         Schema::create($this->set_schema_table, function (Blueprint $table) {
             $table->engine = 'InnoDB';
             $table->increments('id');
-            $table->string('url')->nullable();
-            $table->string('description')->nullable();
-            $table->string('positions')->nullable();
-            $table->integer('search_engine')->nullable();
+            $table->double('min')->nullable();
+            $table->double('max')->nullable();
+            $table->double('premium_min')->nullable();
+            $table->double('premium_max')->nullable();
+            $table->decimal('shows')->nullable();
+            $table->decimal('clicks')->nullable();
+            $table->decimal('first_place_clicks')->nullable();
+            $table->decimal('premium_clicks')->nullable();
+            $table->double('ctr')->nullable();
+            $table->double('first_place_ctr')->nullable();
+            $table->double('premium_ctr')->nullable();
+            $table->string('currency', 10)->nullable();
             $table->unsignedInteger('Keywords_id');
 
-            $table->index(["Keywords_id"], 'fk_AdPostions_Keywords1_idx');
+            $table->index(["Keywords_id"], 'fk_forecastInfo_Keywords1_idx');
             $table->nullableTimestamps();
 
 
-            $table->foreign('Keywords_id', 'fk_AdPostions_Keywords1_idx')
+            $table->foreign('Keywords_id', 'fk_forecastInfo_Keywords1_idx')
                 ->references('id')->on('Keywords')
                 ->onDelete('no action')
                 ->onUpdate('no action');
