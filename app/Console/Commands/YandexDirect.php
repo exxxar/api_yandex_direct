@@ -66,7 +66,28 @@ class YandexDirect extends Command
      */
     public function handle()
     {
+/*
+        Forecastinfo::insertGetId(
+            [
+                'min' => 1.0,
+                'max' => 1.0,
+                'premium_min' => 1.0,
+                'premium_max' => 1.0,
+                'shows' => 1,
+                'clicks' => 1,
+                'first_place_clicks' => 1,
+                'premium_clicks' => 1,
+                'ctr' => 1,
+                'first_place_ctr' => 1,
+                'premium_ctr' => 1,
+                'currency' => 'ru',
+                'Keywords_id' => 2,
+                'created_at'=>Carbon::now(),
+                'updated_at'=>Carbon::now(),
+            ]
+        );
 
+        return;*/
         /*
          * Режимы работы:
          * 0) Наполнение базы вводными словами и словосочетаниями из файла
@@ -209,13 +230,15 @@ class YandexDirect extends Command
     protected function doStep1($select_db_word, $mode = 0, $region = [1])
     {
         $this->log->info($mode==0?"Этап 1 - начало работы":"Этап 2 - начало работы");
-        $this->log->info("Выбор слова " . $select_db_word->keyword . " из БД");
+        $this->log->info("Выбор слова [" . $select_db_word->keyword . "] из БД");
         if ($mode == 0) {
             //получаем список подсказок по слову
             $suggested_words = $this->api->getKeywordsSuggestion($select_db_word->keyword);
+            $this->log->info("Получаем список подсказок по ключевому слову!");
             //проходим циклом по подсказкам, проверяем нет ли слова в бд
             //если нет - добавляем слово в бд
             foreach ($suggested_words as $sw) {
+                $this->log->info("Подсказка: $sw");
                 $fKw = Keywords::where("keyword", $sw)->first();
                 if (empty($fKw))
                     Keywords::insertGetId(
@@ -235,12 +258,12 @@ class YandexDirect extends Command
                 $this->divideAndPrecede($select_db_word->keyword)
             ]);
 
-        sleep(5);
+        $this->doRandomInterval();
         //ждём завершение формирование отчета вордстата
         while (($reports = $this->api->getWordstatReportList())[0]->getStatusReport() == "Pending") {
             $this->log->info("засыпаем");
             $this->log->info($reports[0]->getReportID() . " " . $reports[0]->getStatusReport());
-            sleep(5);
+            $this->doRandomInterval();
         }
         //берем репорт по айди
         $report = $this->api->getWordstatReport($reports[0]->getReportID());
@@ -302,8 +325,6 @@ class YandexDirect extends Command
             ->limit(self::MAX_FORECAST)
             ->get();
 
-        // error_log(count($keywords_without_forecast));
-
         if (count($keywords_without_forecast) < self::MAX_FORECAST) {
             $this->log->info("Еще не набралось нужное колличество ключевых слов:".count($keywords_without_forecast)."\\".self::MAX_FORECAST);
             return;
@@ -318,15 +339,15 @@ class YandexDirect extends Command
 
         $this->log->info("Формируем Forecast отчет");
         $this->api->createNewForecast($buf, $regions);
-        sleep(5);
-        while (($reports = $this->api->getForecastList())[0]->getStatusReport() == "Pending") {
+        $this->doRandomInterval();
+        while (($reports = $this->api->getForecastList())[0]->getStatusForecast() == "Pending") {
             $this->log->info("засыпаем");
-            $this->log->info($reports[0]->getReportID() . " " . $reports[0]->getStatusReport());
-            sleep(5);
+            $this->log->info($reports[0]->getForecastID() . " " . $reports[0]->getStatusForecast());
+            $this->doRandomInterval();
         }
 
-        $this->log->info("Получаем информацию из Forecast отчет [".$reports[0]->getReportID()."]");
-        $report = $this->api->getForecastInfo($reports[0]->getReportID());
+        $this->log->info("Получаем информацию из Forecast отчет [".$reports[0]->getForecastID()."]");
+        $report = $this->api->getForecastInfo($reports[0]->getForecastID());
 
 
         foreach ($report->getPhrases() as $wr) {
@@ -334,7 +355,7 @@ class YandexDirect extends Command
 
             try {
                 $fKwId = Keywords::where("keyword", $wr->getPhrase())->first();
-                if (empty($fKwId)) {
+                if (!empty($fKwId)) {
                     Forecastinfo::insertGetId(
                         [
                             'min' => $wr->getMin(),
@@ -349,12 +370,12 @@ class YandexDirect extends Command
                             'first_place_ctr' => $wr->getFirstPlaceCTR(),
                             'premium_ctr' => $wr->getPremiumCTR(),
                             'currency' => $wr->getCurrency(),
-                            'Keyword_id' => $fKwId,
-                            'add_date' => Carbon::now(),
-                            'check_date' => Carbon::now()
+                            'Keywords_id' => $fKwId->id,
+                            'created_at'=>Carbon::now(),
+                            'updated_at'=>Carbon::now(),
                         ]
                     );
-                    $this->log->info("Добавляем информацию в базу");
+                    $this->log->info("Добавляем информацию для фразы [".$fKwId->keyword." ]");
                 }
 
 
@@ -363,9 +384,9 @@ class YandexDirect extends Command
             }
         }
 
-        $this->log->info("Удаляем Foreacst отчет [".$reports[0]->getReportID()."]");
+        $this->log->info("Удаляем Foreacst отчет [".$reports[0]->getForecastID()."]");
         //удаляем репорт
-        $this->api->deleteForecastReport($reports[0]->getReportID());
+        $this->api->deleteForecastReport($reports[0]->getForecastID());
 
         $this->log->info("Этап 3.1 - завершение этапа");
     }
@@ -378,6 +399,8 @@ class YandexDirect extends Command
         if (Keywords::where('ad_group_id', null)->count() < self::MAX_KEYWORDS)
             return;
 
+
+        $this->log->info("Выбираем из бд ".self::MAX_KEYWORDS." ключевых слов");
         //выбираем из бд 199 слов (лимит 200)
         $keywords_for_group = Keywords::where('ad_group_id', null)
             ->limit(self::MAX_KEYWORDS)
@@ -394,6 +417,7 @@ class YandexDirect extends Command
             ->orderBy('count(ad_group_id)', 'desc')
             ->first();
 
+       // $this->log->info("Групп в компании => ".$groups["count(ad_group_id)"]);
         if (!empty($groups) && $groups["count(ad_group_id)"] < self::MAX_GROUPS) {
             //пока в компании групп меньше чем лимит, берем айди этой компании
 
@@ -406,13 +430,12 @@ class YandexDirect extends Command
         } else {
             //если кампаний нет или нет подходящей компании, то создаем
             try {
-                error_log("test 2");
+                $this->log->info("Создаем новую компанию");
                 $idCampaign = $this->api->addCampain("test company " . ((new Carbon())->now()))
                     ->getAddResults()[0]
                     ->getId();
             } catch (LogicException $exception) {
                 $this->log->error($exception->getTraceAsString());
-
             }
         }
 
@@ -420,7 +443,7 @@ class YandexDirect extends Command
         if (!empty($kw_in_groups) && $kw_in_groups["count(keyword_id)"] < self::MAX_KEYWORDS) {
             //если найдена подходящая группа, то берем её айди и не создаем новый запрос к апи
             $idGroup = $kw_in_groups->ad_group_id;
-
+            $this->log->info("Берем группу в из компании");
         } else {
             //добавляем в команию группу
             try {
@@ -428,6 +451,8 @@ class YandexDirect extends Command
                 $idGroup = $this->api->addGroup("group_to_campaign_$idCampaign-" . ((new Carbon())->now()), $idCampaign, [1])
                     ->getAddResults()[0]
                     ->getId();
+
+                $this->log->info("Добавляем группу [$idGroup] в комапнию [$idCampaign]");
             } catch (LogicException $exception) {
                 $this->log->error($exception->getTraceAsString());
 
@@ -443,7 +468,6 @@ class YandexDirect extends Command
             $kwfg->ad_group_id = $idGroup;
             $kwfg->campaing_id = $idCampaign;
             $kwfg->save();
-            error_log("$idGroup , $kwfg->keyword");
             try {
                 $item = $this->api->addKeyword($idGroup, $kwfg->keyword, False);
                 array_push($buf, $item);
@@ -475,12 +499,11 @@ class YandexDirect extends Command
             return;
         }
         //запрос к Bid-ам
-        //засыпаем на 10 сек
-        sleep(10);
-
+        $this->doRandomInterval();
         $bidData = null;
 
         try {
+            $this->log->info("Получаем информацию о ценах на слова для $idGroup группы");
             $bidData = $this->api->getBidData($idGroup);
         } catch (LogicException $exception) {
             $this->log->error($exception->getTraceAsString());
@@ -494,6 +517,7 @@ class YandexDirect extends Command
             $kwwb->context_bid = $bid->getContextBid() != null ? $bid->getContextBid() / 1000000 : null;
 
             if ($bid->getCompetitorsBids() !== null) {
+                $this->log->info("Доступно CompetitorsBids");
                 foreach ($bid->getCompetitorsBids() as $cb) {
                     //добавляем инфу в CompetitorsBids
                     $cmb = new CompetitorsBids();
@@ -504,6 +528,7 @@ class YandexDirect extends Command
             }
 
             if ($bid->getSearchPrices() !== null) {
+                $this->log->info("Доступно SearchPrices");
                 $kwwb->search_prices_pf = $bid->getSearchPrices()[0]->getPrice() / 1000000;
                 $kwwb->search_prices_pb = $bid->getSearchPrices()[1]->getPrice() / 1000000;
                 $kwwb->search_prices_ff = $bid->getSearchPrices()[2]->getPrice() / 1000000;
@@ -523,6 +548,7 @@ class YandexDirect extends Command
                 }
             }
 
+
             $kwwb->min_search_price = $bid->getMinSearchPrice() / 1000000;
             $kwwb->current_search_price = $bid->getCurrentSearchPrice() / 1000000;
             $kwwb->check_date = (new Carbon())->now();
@@ -534,17 +560,17 @@ class YandexDirect extends Command
 
     protected function divideAndPrecede($keyword)
     {
-        $this->log->info("Предваряем ключевые слова во фразе знаком '!'");
+
         $buf = explode(' ', $keyword);
         $splited_keywords = "\"[";
         foreach ($buf as $b) {
             if (strlen($b) <= 0)
                 continue;
             //если слово идёт с "+", то это и следующие слова идут без "!"
-            //$splited_keywords .= (strrpos(trim($b), "+")===False ?"!$b " :"$b " );
             $splited_keywords .= (strrpos(trim($b), "+") === False ? " !$b " : str_replace('+', ' ', $b));
         }
         $splited_keywords .= "]\"";
+        $this->log->info("Предваряем ключевые слова во фразе знаком '!'->$splited_keywords");
         return $splited_keywords;
     }
 
@@ -575,7 +601,6 @@ class YandexDirect extends Command
                 $w->save();
             }
         }
-
         $this->log->info('Все check у слов успешно сброшены!');
     }
 
@@ -594,5 +619,11 @@ class YandexDirect extends Command
             }
         }
         $this->log->info("Все промущенные слова успешно найдены, всего $count!");
+    }
+
+    protected function doRandomInterval($min=1,$max=10){
+        $time = mt_rand($min, $max);
+        $this->log->info("Засыпаем на время $time секунд");
+        sleep($time);
     }
 }

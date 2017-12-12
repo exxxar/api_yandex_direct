@@ -338,7 +338,9 @@ class YandexApi
 
     public function createNewForecast($keyword,$regions){
         $newForecastInfo = new NewForecastInfo();
-        $keyword  = strpos($keyword,",")!=False?explode(",",$keyword):[$keyword];
+        if (!is_array($keyword))
+            $keyword  = strpos($keyword,",")!=False?explode(",",$keyword):[$keyword];
+
         for($i=0;$i<count($keyword);$i++)
             $keyword[$i] = trim($keyword[$i]);
 

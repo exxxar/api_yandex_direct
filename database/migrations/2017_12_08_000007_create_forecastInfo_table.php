@@ -25,10 +25,10 @@ class CreateForecastinfoTable extends Migration
             $table->double('max')->nullable();
             $table->double('premium_min')->nullable();
             $table->double('premium_max')->nullable();
-            $table->decimal('shows')->nullable();
-            $table->decimal('clicks')->nullable();
-            $table->decimal('first_place_clicks')->nullable();
-            $table->decimal('premium_clicks')->nullable();
+            $table->integer('shows')->nullable();
+            $table->integer('clicks')->nullable();
+            $table->integer('first_place_clicks')->nullable();
+            $table->integer('premium_clicks')->nullable();
             $table->double('ctr')->nullable();
             $table->double('first_place_ctr')->nullable();
             $table->double('premium_ctr')->nullable();
@@ -36,7 +36,7 @@ class CreateForecastinfoTable extends Migration
             $table->unsignedInteger('Keywords_id');
 
             $table->index(["Keywords_id"], 'fk_forecastInfo_Keywords1_idx');
-            $table->nullableTimestamps();
+            $table->timestamps();
 
 
             $table->foreign('Keywords_id', 'fk_forecastInfo_Keywords1_idx')
