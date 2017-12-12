@@ -22,10 +22,10 @@ class CreateKeywordsTable extends Migration
             $table->engine = 'InnoDB';
             $table->increments('id');
             $table->string('keyword');
-            $table->integer('keyword_id')->nullable();
-            $table->integer('impressions_per_month')->nullable();
-            $table->integer('campaing_id')->nullable();
-            $table->integer('ad_group_id')->nullable();
+            $table->bigInteger('keyword_id')->nullable();
+            $table->bigInteger('impressions_per_month')->nullable();
+            $table->bigInteger('campaing_id')->nullable();
+            $table->bigInteger('ad_group_id')->nullable();
             $table->integer('bid')->nullable();
             $table->integer('context_bid')->nullable();
             $table->integer('search_prices_pf')->nullable();

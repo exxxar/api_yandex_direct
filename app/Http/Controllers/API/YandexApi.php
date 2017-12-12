@@ -19,6 +19,7 @@ use Biplane\YandexDirect\Api\V5\Contract\AdGroupAddItem;
 use Biplane\YandexDirect\Api\V5\Contract\AdGroupFieldEnum;
 use Biplane\YandexDirect\Api\V5\Contract\AdGroupsSelectionCriteria;
 use Biplane\YandexDirect\Api\V5\Contract\BidFieldEnum;
+use Biplane\YandexDirect\Api\V5\Contract\BidSetAutoItem;
 use Biplane\YandexDirect\Api\V5\Contract\BidsSelectionCriteria;
 use Biplane\YandexDirect\Api\V5\Contract\CampaignAddItem;
 use Biplane\YandexDirect\Api\V5\Contract\CampaignFieldEnum;
@@ -38,6 +39,7 @@ use Biplane\YandexDirect\Api\V5\Contract\IdsCriteria;
 use Biplane\YandexDirect\Api\V5\Contract\KeywordAddItem;
 use Biplane\YandexDirect\Api\V5\Contract\KeywordFieldEnum;
 use Biplane\YandexDirect\Api\V5\Contract\KeywordsSelectionCriteria;
+use Biplane\YandexDirect\Api\V5\Contract\SetAutoBidsRequest;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignAddItem;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignFieldEnum;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignNetworkStrategyAdd;
@@ -142,7 +144,7 @@ class YandexApi
                 ->setBiddingStrategyType(TextCampaignSearchStrategyTypeEnum::HIGHEST_POSITION)
             )
             ->setNetwork(TextCampaignNetworkStrategyAdd::create()
-                ->setBiddingStrategyType(TextCampaignNetworkStrategyTypeEnum::MAXIMUM_COVERAGE));
+                ->setBiddingStrategyType(TextCampaignNetworkStrategyTypeEnum::NETWORK_DEFAULT));
 
         $textCampaingAddItem = TextCampaignAddItem::create()
             ->setBiddingStrategy($textCampaingStrategyAdd);
@@ -288,6 +290,16 @@ class YandexApi
 
     }
 
+    public function setAutoBids($keywordId){
+
+        $bidSetAutoItem = BidSetAutoItem::create()
+            ->setKeywordId($keywordId);
+
+
+        $request = SetAutoBidsRequest::create()
+            ->setBids([$bidSetAutoItem]);
+        return $this->user->getBidsService()->setAuto($request);
+    }
     public function getBidData($groupId)
     {
         $bidsSelectionCriteria = BidsSelectionCriteria::create()

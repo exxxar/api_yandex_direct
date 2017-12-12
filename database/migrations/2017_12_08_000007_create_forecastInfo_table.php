@@ -36,7 +36,7 @@ class CreateForecastinfoTable extends Migration
             $table->unsignedInteger('Keywords_id');
 
             $table->index(["Keywords_id"], 'fk_forecastInfo_Keywords1_idx');
-            $table->timestamps();
+            $table->nullableTimestamps();
 
 
             $table->foreign('Keywords_id', 'fk_forecastInfo_Keywords1_idx')

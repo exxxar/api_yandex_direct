@@ -261,7 +261,6 @@ class YandexDirect extends Command
         $this->doRandomInterval();
         //ждём завершение формирование отчета вордстата
         while (($reports = $this->api->getWordstatReportList())[0]->getStatusReport() == "Pending") {
-            $this->log->info("засыпаем");
             $this->log->info($reports[0]->getReportID() . " " . $reports[0]->getStatusReport());
             $this->doRandomInterval();
         }
@@ -341,7 +340,6 @@ class YandexDirect extends Command
         $this->api->createNewForecast($buf, $regions);
         $this->doRandomInterval();
         while (($reports = $this->api->getForecastList())[0]->getStatusForecast() == "Pending") {
-            $this->log->info("засыпаем");
             $this->log->info($reports[0]->getForecastID() . " " . $reports[0]->getStatusForecast());
             $this->doRandomInterval();
         }
@@ -469,6 +467,8 @@ class YandexDirect extends Command
             $kwfg->campaing_id = $idCampaign;
             $kwfg->save();
             try {
+                $this->log->info("Ключевое слово, добавляемое в группу ".$kwfg->keyword);
+
                 $item = $this->api->addKeyword($idGroup, $kwfg->keyword, False);
                 array_push($buf, $item);
             } catch (LogicException $exception) {
@@ -484,6 +484,7 @@ class YandexDirect extends Command
         $keywordsIds = null;
 
         try {
+            $this->log->info("Посылаем запрос по ключевым словам на ".count($buf)." элементов, в группе $idGroup");
             $keywordsIds = $this->api->doKeywordRequest($buf)->getAddResults();//тут получаем добавленные идентификаторы ключевых слов
             //по идее тут мы должны добавить их в бд, чтоб было проще добавлять цены по айди ключевого слова, а не только группы
 
@@ -492,6 +493,9 @@ class YandexDirect extends Command
                 $ki = $keywordsIds[$i]->getId();
                 $keywords_for_group[$i]->keyword_id = $ki;
                 $keywords_for_group[$i]->save();
+
+                $this->api->setAutoBids($ki);
+                $this->doRandomInterval();
             }
 
         } catch (ApiException $exception) {
@@ -510,12 +514,17 @@ class YandexDirect extends Command
             return;
         }
 
+        $this->log->info("Количество результатов => ".count($bidData->getBids()));
+
         foreach ($bidData->getBids() as $bid) {
             $kwwb = Keywords::where('keyword_id', $bid->getKeywordId())->first();
+
+            $this->log->info("Добавляем информацию по ценам для слова => ".$kwwb->keyword."[". $bid->getKeywordId()."]");
 
             $kwwb->bid = $bid->getBid() != null ? $bid->getBid() / 1000000 : null;
             $kwwb->context_bid = $bid->getContextBid() != null ? $bid->getContextBid() / 1000000 : null;
 
+            $this->log->info("Кол-во CompetitorsBids=>".count($bid->getCompetitorsBids()));
             if ($bid->getCompetitorsBids() !== null) {
                 $this->log->info("Доступно CompetitorsBids");
                 foreach ($bid->getCompetitorsBids() as $cb) {
@@ -527,6 +536,7 @@ class YandexDirect extends Command
                 }
             }
 
+            $this->log->info("Кол-во SearchPrices=>".count($bid->getSearchPrices()));
             if ($bid->getSearchPrices() !== null) {
                 $this->log->info("Доступно SearchPrices");
                 $kwwb->search_prices_pf = $bid->getSearchPrices()[0]->getPrice() / 1000000;
@@ -537,6 +547,7 @@ class YandexDirect extends Command
             }
 
             if ($bid->getContextCoverage() !== null) {
+                $this->log->info("Кол-во ContextCoverage=>".count($bid->getContextCoverage()));
                 foreach ($bid->getContextCoverage() as $cc) {
                     foreach ($cc->getItems() as $item) {
                         $kwcc = new ContextCoverage();
@@ -553,6 +564,8 @@ class YandexDirect extends Command
             $kwwb->current_search_price = $bid->getCurrentSearchPrice() / 1000000;
             $kwwb->check_date = (new Carbon())->now();
             $kwwb->save();
+
+            $this->log->info("Bid=>".$kwwb->bid."\nContextBid=>".$kwwb->context_bid."\nMinSearchPrice=>".$kwwb->min_search_price );
         }
         $this->log->info("Этап 3.2 - завершение этапа");
     }
@@ -560,6 +573,10 @@ class YandexDirect extends Command
 
     protected function divideAndPrecede($keyword)
     {
+        if (strrpos(trim($keyword), "[") !== False
+            &&strrpos(trim($keyword), "]") !== False
+            &&strrpos(trim($keyword), "!") !== False)
+            return $keyword;
 
         $buf = explode(' ', $keyword);
         $splited_keywords = "\"[";
@@ -621,7 +638,7 @@ class YandexDirect extends Command
         $this->log->info("Все промущенные слова успешно найдены, всего $count!");
     }
 
-    protected function doRandomInterval($min=1,$max=10){
+    protected function doRandomInterval($min=3,$max=10){
         $time = mt_rand($min, $max);
         $this->log->info("Засыпаем на время $time секунд");
         sleep($time);

@@ -19,6 +19,7 @@
     {{csrf_field()}}
     <h2>Отчет по словам</h2>
     <ul>
+
         @foreach ($result as $w)
 
             @foreach($w->getSearchedWith() as $sw)

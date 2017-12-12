@@ -56,6 +56,7 @@
         </thead>
         <tbody>
 
+
         @if($result->getKeywords()!=null)
             @foreach ($result->getKeywords() as $key)
                 <tr>
