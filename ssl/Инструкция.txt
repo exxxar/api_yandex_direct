@@ -1,0 +1,11 @@
+﻿[client]
+...
+ssl-cert=C:\\Program Files\\MySQL\\Certs\\client-cert.pem
+ssl-key=C:\\Program Files\\MySQL\\Certs\\client-key.pem
+
+[mysqld]
+...
+ssl
+ssl-ca=C:\\Program Files\\MySQL\\Certs\\ca-cert.pem
+ssl-cert=C:\\Program Files\\MySQL\\Certs\\server-cert.pem
+ssl-key=C:\\Program Files\\MySQL\\Certs\\server-key.pem

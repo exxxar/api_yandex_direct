@@ -12,7 +12,9 @@ use Biplane\YandexDirect\Api\V4\Contract\KeywordsSuggestionInfo;
 use Biplane\YandexDirect\Api\V4\Contract\NewForecastInfo;
 use Biplane\YandexDirect\Api\V4\Contract\NewWordstatReportInfo;
 use Biplane\YandexDirect\Api\V4\Contract\WordstatReportInfo;
+use Biplane\YandexDirect\Api\V5\Contract\AdAddItem;
 use Biplane\YandexDirect\Api\V5\Contract\AddAdGroupsRequest;
+use Biplane\YandexDirect\Api\V5\Contract\AddAdsRequest;
 use Biplane\YandexDirect\Api\V5\Contract\AddCampaignsRequest;
 use Biplane\YandexDirect\Api\V5\Contract\AddKeywordsRequest;
 use Biplane\YandexDirect\Api\V5\Contract\AdGroupAddItem;
@@ -20,6 +22,7 @@ use Biplane\YandexDirect\Api\V5\Contract\AdGroupFieldEnum;
 use Biplane\YandexDirect\Api\V5\Contract\AdGroupsSelectionCriteria;
 use Biplane\YandexDirect\Api\V5\Contract\BidFieldEnum;
 use Biplane\YandexDirect\Api\V5\Contract\BidSetAutoItem;
+use Biplane\YandexDirect\Api\V5\Contract\BidSetItem;
 use Biplane\YandexDirect\Api\V5\Contract\BidsSelectionCriteria;
 use Biplane\YandexDirect\Api\V5\Contract\CampaignAddItem;
 use Biplane\YandexDirect\Api\V5\Contract\CampaignFieldEnum;
@@ -40,6 +43,8 @@ use Biplane\YandexDirect\Api\V5\Contract\KeywordAddItem;
 use Biplane\YandexDirect\Api\V5\Contract\KeywordFieldEnum;
 use Biplane\YandexDirect\Api\V5\Contract\KeywordsSelectionCriteria;
 use Biplane\YandexDirect\Api\V5\Contract\SetAutoBidsRequest;
+use Biplane\YandexDirect\Api\V5\Contract\SetBidsRequest;
+use Biplane\YandexDirect\Api\V5\Contract\TextAdAdd;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignAddItem;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignFieldEnum;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignNetworkStrategyAdd;
@@ -124,11 +129,11 @@ class YandexApi
         return $this->user->getDictionariesService()->get($request);
     }
 
-    public function addGroup($name, $campaingId, $regions)
+    public function addGroup($name, $campaingId, $regions = [1])
     {
         $item = AdGroupAddItem::create()
             ->setName($name)
-            ->setCampaignId($campaingId)
+            ->setCampaignId(floatval($campaingId))
             ->setRegionIds($regions);
 
         $request = AddAdGroupsRequest::create()
@@ -137,14 +142,35 @@ class YandexApi
         return $this->user->getAdGroupsService()->add($request);
     }
 
+    public function createAds($adGroupId, $title = "some test title", $text = "some test text", $url = "http://mail.ru")
+    {
+
+        $textAdAdd = TextAdAdd::create()
+            ->setTitle($title)
+            ->setText($text)
+            ->setHref($url)
+            ->setMobile("NO");
+
+        $adAddItem = AdAddItem::create()
+            ->setAdGroupId(floatval($adGroupId))
+            ->setTextAd($textAdAdd);
+
+        $addAdsRequest = AddAdsRequest::create()
+            ->setAds([$adAddItem]);
+
+        return $this->user->getAdsService()->add($addAdsRequest);
+
+    }
+
     public function addCampain($campaing_name)
     {
         $textCampaingStrategyAdd = TextCampaignStrategyAdd::create()
             ->setSearch(TextCampaignSearchStrategyAdd::create()
                 ->setBiddingStrategyType(TextCampaignSearchStrategyTypeEnum::HIGHEST_POSITION)
+
             )
             ->setNetwork(TextCampaignNetworkStrategyAdd::create()
-                ->setBiddingStrategyType(TextCampaignNetworkStrategyTypeEnum::NETWORK_DEFAULT));
+                ->setBiddingStrategyType(TextCampaignNetworkStrategyTypeEnum::MAXIMUM_COVERAGE));
 
         $textCampaingAddItem = TextCampaignAddItem::create()
             ->setBiddingStrategy($textCampaingStrategyAdd);
@@ -163,7 +189,7 @@ class YandexApi
     public function removeCampain($id)
     {
         $criteria = IdsCriteria::create()
-            ->setIds([$id]);
+            ->setIds([floatval($id)]);
         $payload = DeleteCampaignsRequest::create()
             ->setSelectionCriteria($criteria);
         return $this->user->getCampaignsService()->delete($payload);
@@ -173,7 +199,7 @@ class YandexApi
     public function getCampain($ids)
     {
         $campaignsSelectionCriteria = CampaignsSelectionCriteria::create()
-            ->setIds([$ids]/*explode(",", $ids)*/);
+            ->setIds([floatval($ids)]/*explode(",", $ids)*/);
         $request = GetCampaignsRequest::create()
             ->setSelectionCriteria($campaignsSelectionCriteria)
             ->setFieldNames([
@@ -195,7 +221,7 @@ class YandexApi
     public function removeGroup($groupId)
     {
         $critearia = IdsCriteria::create()
-            ->setIds([$groupId]);
+            ->setIds([floatval($groupId)]);
 
         $request = DeleteAdGroupsRequest::create()
             ->setSelectionCriteria($critearia);
@@ -207,7 +233,7 @@ class YandexApi
     public function getKeywordsList($groupId)
     {
         $keywordsSelectionCriteria = KeywordsSelectionCriteria::create()
-            ->setAdGroupIds([$groupId]);
+            ->setAdGroupIds([floatval($groupId)]);
 
         $request = GetKeywordsRequest::create()
             ->setSelectionCriteria($keywordsSelectionCriteria)
@@ -234,7 +260,7 @@ class YandexApi
 
     public function deleteWordstatReport($id)
     {
-        return $this->user->getApiService()->deleteWordstatReport($id);
+        return $this->user->getApiService()->deleteWordstatReport(floatval($id));
     }
 
     public function getWordstatReportList()
@@ -244,66 +270,82 @@ class YandexApi
 
     public function getWordstatReport($id)
     {
-        return $this->user->getApiService()->getWordstatReport($id);
+        return $this->user->getApiService()->getWordstatReport(floatval($id));
     }
 
     public function removeKeyword($keywordId)
     {
         $criteria = IdsCriteria::create()
-            ->setIds([$keywordId]);
+            ->setIds([floatval($keywordId)]);
 
         $request = DeleteKeywordsRequest::create()
             ->setSelectionCriteria($criteria);
         return $this->user->getKeywordsService()->delete($request);
     }
 
-    public function addKeywords($groupId, $word, $isAutotargeting)
-    {
-        $keyword = $isAutotargeting ? "---autotargeting" : $word;
-        $item = KeywordAddItem::create()
-            ->setKeyword($keyword)
-            ->setAdGroupId($groupId);
-
-        $request = AddKeywordsRequest::create()
-            ->setKeywords([$item]);
-
-        return $this->user->getKeywordsService()->add($request);
-    }
-
     public function addKeyword($groupId, $word, $isAutotargeting)
     {
+        $item = $this->addKeyword_item(floatval($groupId), $word, $isAutotargeting);
+        return $this->doKeywordRequest([$item]);
+    }
+
+    public function addKeyword_item($groupId, $word, $isAutotargeting)
+    {
         $keyword = $isAutotargeting ? "---autotargeting" : $word;
         $item = KeywordAddItem::create()
             ->setKeyword($keyword)
-            ->setAdGroupId($groupId);
+            ->setAdGroupId(floatval($groupId));
 
         return $item;
 
     }
 
-    public function doKeywordRequest($keywords){
+    public function doKeywordRequest($keywords)
+    {
 
-            $request = AddKeywordsRequest::create()
-                ->setKeywords($keywords);
+        $request = AddKeywordsRequest::create()
+            ->setKeywords( $keywords);
 
-            return $this->user->getKeywordsService()->add($request);
+        return $this->user->getKeywordsService()->add($request);
 
     }
 
-    public function setAutoBids($keywordId){
+    public function setAutoBids($keywordId)
+    {
 
         $bidSetAutoItem = BidSetAutoItem::create()
             ->setKeywordId($keywordId);
-
-
         $request = SetAutoBidsRequest::create()
             ->setBids([$bidSetAutoItem]);
         return $this->user->getBidsService()->setAuto($request);
     }
+
+    public function createBidsItem($keywordId){
+        return BidSetItem::create()
+            ->setKeywordId($keywordId);
+    }
+
+    public function doBidsRequest(array $bidsItemArray){
+        $request = SetBidsRequest::create()
+            ->setBids($bidsItemArray);
+        return $this->user->getBidsService()->set($request);
+    }
+    public function setBids($keywordId)
+    {
+
+        $bidSetItem = BidSetItem::create()
+            ->setKeywordId($keywordId);
+
+        $request = SetBidsRequest::create()
+            ->setBids([$bidSetItem]);
+        return $this->user->getBidsService()->set($request);
+    }
+
+
     public function getBidData($groupId)
     {
         $bidsSelectionCriteria = BidsSelectionCriteria::create()
-            ->setAdGroupIds([$groupId]);
+            ->setAdGroupIds([floatval($groupId)]);
 
         $request = GetBidsRequest::create()
             ->setSelectionCriteria($bidsSelectionCriteria)
@@ -312,6 +354,7 @@ class YandexApi
                 BidFieldEnum::AUCTION_BIDS,
                 BidFieldEnum::COMPETITORS_BIDS,
                 BidFieldEnum::CONTEXT_BID,
+                BidFieldEnum::CONTEXT_COVERAGE,
                 BidFieldEnum::CURRENT_SEARCH_PRICE,
                 BidFieldEnum::MIN_SEARCH_PRICE,
                 BidFieldEnum::SEARCH_PRICES
@@ -323,7 +366,7 @@ class YandexApi
     {
 
         $groupsSelectionCriteria = AdGroupsSelectionCriteria::create()
-            ->setCampaignIds([$ids]);
+            ->setCampaignIds([floatval($ids)]);
 
         $request = GetAdGroupsRequest::create()
             ->setSelectionCriteria($groupsSelectionCriteria)
@@ -338,22 +381,24 @@ class YandexApi
     }
 
     //получаем подсказки по словам
-    public function getKeywordsSuggestion($keyword){
+    public function getKeywordsSuggestion($keyword)
+    {
         $keywordsSuggestionInfo = new KeywordsSuggestionInfo();
-        $keyword  = strpos($keyword,",")!=False?explode(",",$keyword):[$keyword];
-        for($i=0;$i<count($keyword);$i++)
+        $keyword = strpos($keyword, ",") != False ? explode(",", $keyword) : [$keyword];
+        for ($i = 0; $i < count($keyword); $i++)
             $keyword[$i] = trim($keyword[$i]);
         $keywordsSuggestionInfo->setKeywords($keyword);
 
         return $this->user->getApiService()->getKeywordsSuggestion($keywordsSuggestionInfo);
     }
 
-    public function createNewForecast($keyword,$regions){
+    public function createNewForecast($keyword, $regions)
+    {
         $newForecastInfo = new NewForecastInfo();
         if (!is_array($keyword))
-            $keyword  = strpos($keyword,",")!=False?explode(",",$keyword):[$keyword];
+            $keyword = strpos($keyword, ",") != False ? explode(",", $keyword) : [$keyword];
 
-        for($i=0;$i<count($keyword);$i++)
+        for ($i = 0; $i < count($keyword); $i++)
             $keyword[$i] = trim($keyword[$i]);
 
         $newForecastInfo->setPhrases($keyword);
@@ -364,16 +409,19 @@ class YandexApi
         return $this->user->getApiService()->createNewForecast($newForecastInfo);
     }
 
-    public function getForecastInfo($forecastId) {
-        return $this->user->getApiService()->getForecast($forecastId);
+    public function getForecastInfo($forecastId)
+    {
+        return $this->user->getApiService()->getForecast(floatval($forecastId));
     }
 
-    public function getForecastList(){
+    public function getForecastList()
+    {
         return $this->user->getApiService()->getForecastList();
     }
 
-    public function deleteForecastReport($forecastId){
-        return $this->user->getApiService()->deleteForecastReport($forecastId);
+    public function deleteForecastReport($forecastId)
+    {
+        return $this->user->getApiService()->deleteForecastReport(floatval($forecastId));
     }
 
 }

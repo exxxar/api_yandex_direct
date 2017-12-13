@@ -126,10 +126,15 @@ class ApiDirectController extends Controller
     {
 
         $campaingId = $request->get("campaingid");
+        $groupName =$request->get("name");
         $regions = explode(',', implode(',', $request->get("regions")));//explode(',',$request->get("regions"));
 
-        $request = $this->api->addGroup($campaingId, $regions);
-        return redirect("/test/apidirect/groups/list/" . $campaingId);
+        $request = $this->api->addGroup($groupName,$campaingId, $regions);
+
+        echo  $request->getAddResults()[0]->getId();
+        $rez =  $this->api->createAds($request->getAddResults()[0]->getId());
+        echo var_dump($rez);
+        //return redirect("/test/apidirect/groups/list/" . $campaingId);
 
     }
 
@@ -228,10 +233,12 @@ class ApiDirectController extends Controller
     {
 
         $groupid = $request->get("groupId");
+        echo "[$groupid]";
         $keyword = $request->get("keyword");
         $isAutotargeting = $request->get("autotargeting") ? True : False;
 
-        $request = $this->api->addKeywords($groupid, $keyword, $isAutotargeting);
+        $request = $this->api->addKeyword($groupid, $keyword, $isAutotargeting);
+
         return redirect("/test/apidirect/keywords/list/" . $groupid);
     }
 
