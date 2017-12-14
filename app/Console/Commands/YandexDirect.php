@@ -153,23 +153,32 @@ class YandexDirect extends Command
             $kw->check = True;
             $kw->save();
 
-            $this->doStep1($select_db_word);//режим сбора
-            $this->doStep1($select_db_word, 1); //режим уточнения
+            try {
+                $this->doStep1($select_db_word);//режим сбора
+            } catch (ApiException $ae) {
+            }
 
-            $this->doStep3_1();//режим выбора данных из forecast
+            try {
+                $this->doStep1($select_db_word, 1); //режим уточнения
+            } catch (ApiException $ae) {
+            }
+
+            try {
+                $this->doStep3_1();//режим выбора данных из forecast
+            } catch (ApiException $ae) {
+            }
+
             try {
                 //если балы есть или время ожидания прошло, тогда выполняем этап, требующий балы
                 //иначе мы крашимся, ставим время ожидания и просто переходим к выполнению следующего цикла
 
-                if ($this->api->getUnits()->getRest()>0||$this->api->checkUnitsTime())
+                if ($this->api->getUnits()->getRest() > 0 || $this->api->checkUnitsTime())
                     $this->doStep3_2();//режим выбора данных из кампаний
-                else
-                {
-                    $this->log->error("Количество оставшихся баллов:".$this->api->getUnits()->getRest()." Осталось времени:".$this->api->getRefreshUnitsTime());
+                else {
+                    $this->log->error("Количество оставшихся баллов:" . $this->api->getUnits()->getRest() . " Осталось времени:" . $this->api->getRefreshUnitsTime());
                 }
-            }
-            catch(ApiException $ae){
-                $this->log->error("Ошибка количества баллов:".$ae->getTraceAsString()." Продолжаем работу в режиме сбора слов!");
+            } catch (ApiException $ae) {
+                $this->log->error("Ошибка количества баллов:" . $ae->getTraceAsString() . " Продолжаем работу в режиме сбора слов!");
                 $this->api->updateUnitsTime();
             }
             $this->doFinalCheck();
@@ -305,15 +314,21 @@ class YandexDirect extends Command
      *
          select * from `keywords`
          where not exists (select * from `forecastinfo` where `keywords`.`id`=`forecastinfo`.`Keywords_id`)
-     */
+
+         SELECT *  FROM `keywords` WHERE `id` NOT IN (SELECT `Keywords_id` FROM `forecastinfo` )
+
+        SELECT COUNT(`id`), `Keywords_id`
+                FROM `forecastinfo`  WHERE `Keywords_id`=1
+                GROUP BY `Keywords_id`
+                ORDER BY COUNT(`id`) DESC
+*/
     protected function doStep3_1($regions = [1])
     {
         $this->log->info("Этап 3.1 - начало этапа");
         $this->log->info("Берем порциям все ключевые слова, для которых нет соответствия в таблице forecastinfo");
-        $keywords_without_forecast = Keywords::select('keyword')->whereNotExists(function ($query) {
+        $keywords_without_forecast = Keywords::whereNotIn('id', function ($query) {
             $query->select('Keywords_id')
-                ->from('forecastinfo')
-                ->whereRaw('keywords.id = forecastinfo.Keywords_id');
+                ->from('forecastinfo');
         })
             ->limit(self::MAX_FORECAST)
             ->get();
@@ -347,18 +362,13 @@ class YandexDirect extends Command
 
             try {
                 $fKwId = Keywords::where("keyword", $wr->getPhrase())->first();
-                /*          SELECT COUNT(`id`), `Keywords_id`
-            FROM `forecastinfo`  WHERE `Keywords_id`=1
-            GROUP BY `Keywords_id`
-            ORDER BY COUNT(`id`) DESC
-*/
                 //проверка на наличие в бд уже существующих элементов с Keywords_id
                 $fcount = Forecastinfo::select('Keywords_id', DB::raw('count(id)'))
-                            ->groupBy('Keywords_id')
-                            ->where("Keywords_id", $fKwId->id)
-                            ->count();
-                $this->log->info("Forecast информация по[" . $fKwId->id . " ](".($fcount==0?"будет добавлена":"уже есть в колличестве ($fcount)").")");
-                if (!empty($fKwId)&&$fcount==0) {
+                    ->groupBy('Keywords_id')
+                    ->where("Keywords_id", $fKwId->id)
+                    ->count();
+                $this->log->info("Forecast информация по[" . $fKwId->id . "](" . ($fcount == 0 ? "будет добавлена" : "уже есть в колличестве ($fcount)") . ")");
+                if (!empty($fKwId) && $fcount == 0) {
                     Forecastinfo::insertGetId(
                         [
                             'min' => $wr->getMin(),
@@ -620,11 +630,11 @@ class YandexDirect extends Command
         //повторно отмечаем все слова не проверенными, чтоб повторно пройтись по ним и заполнить группы
         $words = Keywords::all();
         foreach ($words as $w) {
-                $w->check = null;
-                $w->keyword_id = null;
-                $w->campaing_id = null;
-                $w->ad_group_id = null;
-                $w->save();
+            $w->check = null;
+            $w->keyword_id = null;
+            $w->campaing_id = null;
+            $w->ad_group_id = null;
+            $w->save();
         }
         $this->log->info('Все компании успешно сброшены!');
     }
@@ -634,15 +644,15 @@ class YandexDirect extends Command
         $this->log->info("Запуск режима сброса отмеченный слов!");
         $words = Keywords::where('check', 1)->get();
         foreach ($words as $w) {
-                $w->check = null;
-                $w->save();
+            $w->check = null;
+            $w->save();
         }
         $this->log->info('Все check у слов успешно сброшены!');
     }
 
     protected function doFinalCheck()
     {
-        $this->log->info("Запуск режима проверки промущенных слов!");
+        $this->log->info("Запуск режима проверки пропущенных слов!");
         // тут у нас проверка пропущенных по разным причинам слов в бд - если слово уже было взято на обработку, но инфа из ворд стата не получена, то снимаем флаг "проверки" и на следующей круге по новой будет проверено слово
         $words = Keywords::where('check', 1)->get();
         $count = 0;
