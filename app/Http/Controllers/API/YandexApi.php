@@ -8,6 +8,7 @@
 
 namespace App\Http\Controllers\API;
 
+use Biplane\YandexDirect\Api\Units;
 use Biplane\YandexDirect\Api\V4\Contract\KeywordsSuggestionInfo;
 use Biplane\YandexDirect\Api\V4\Contract\NewForecastInfo;
 use Biplane\YandexDirect\Api\V4\Contract\NewWordstatReportInfo;
@@ -53,6 +54,7 @@ use Biplane\YandexDirect\Api\V5\Contract\TextCampaignSearchStrategyAdd;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignSearchStrategyTypeEnum;
 use Biplane\YandexDirect\Api\V5\Contract\TextCampaignStrategyAdd;
 use Biplane\YandexDirect\Api\V5\Dictionaries;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Biplane\YandexDirect\Api\V5\Contract\AdFieldEnum;
@@ -64,6 +66,8 @@ use Biplane\YandexDirect\User;
 class YandexApi
 {
     private $user;
+    private $units;
+    private $unitsTime;
 
     public function __construct()
     {
@@ -78,8 +82,21 @@ class YandexApi
             'locale' => User::LOCALE_RU,
             'sandbox' => env("APIDIRECT_SANDBOX")
         ]);
+
+       $this->units = new Units(-1,-1,-1);
+       $this->unitsTime = (Carbon::Now())->timestamp;
     }
 
+    public function checkUnitsTime(){
+        return ((Carbon::Now())->timestamp>$this->unitsTime+1000);
+    }
+    public function updateUnitsTime(){
+        $this->unitsTime = (Carbon::Now())->timestamp;
+    }
+
+    public function getUnits(){
+        return $this->units;
+    }
     public function getCampaingAll()
     {
         $criteria = CampaignsSelectionCriteria::create();
@@ -89,9 +106,14 @@ class YandexApi
                 CampaignFieldEnum::ID,
                 CampaignFieldEnum::NAME
             ]);
-
-        return $this->user->getCampaignsService()->get($payload);
-    }
+     /*   $t = $this->user->getCampaignsService();
+      //  $t->get($payload);
+        echo " лимит на день:".$t->getUnits()->getLimit()."<br> доступный остаток".$t->getUnits()->getRest()."<br> израсходовано:".$t->getUnits()->getSpent();*/
+        $req = $this->user->getCampaignsService();
+        $rez = $req->get($payload);
+        $this->units = $req->getUnits();
+        return $rez;
+      }
 
 
     public function getDictionaryAll($param)
@@ -126,7 +148,12 @@ class YandexApi
 
         $request = GetDictionariesRequest::create()
             ->setDictionaryNames([$dictioanryNames]);
-        return $this->user->getDictionariesService()->get($request);
+
+        $req = $this->user->getDictionariesService();
+        $rez =$req->get($request);
+        $this->units = $req->getUnits();
+
+        return $rez;
     }
 
     public function addGroup($name, $campaingId, $regions = [1])
@@ -139,7 +166,11 @@ class YandexApi
         $request = AddAdGroupsRequest::create()
             ->setAdGroups([$item]);
 
-        return $this->user->getAdGroupsService()->add($request);
+        $req = $this->user->getAdGroupsService();
+        $rez = $req->add($request);
+        $this->units = $req->getUnits();
+
+        return $rez;
     }
 
     public function createAds($adGroupId, $title = "some test title", $text = "some test text", $url = "http://mail.ru")
@@ -158,7 +189,11 @@ class YandexApi
         $addAdsRequest = AddAdsRequest::create()
             ->setAds([$adAddItem]);
 
-        return $this->user->getAdsService()->add($addAdsRequest);
+        $req = $this->user->getAdsService();
+        $rez = $req->add($addAdsRequest);
+        $this->units = $req->getUnits();
+
+        return $rez;
 
     }
 
@@ -183,7 +218,11 @@ class YandexApi
         $criteria = AddCampaignsRequest::create()
             ->setCampaigns(array($compainItem));
 
-        return $this->user->getCampaignsService()->add($criteria);
+        $req = $this->user->getCampaignsService();
+        $rez = $req->add($criteria);
+        $this->units = $req->getUnits();
+
+        return $rez;
     }
 
     public function removeCampain($id)
@@ -192,8 +231,12 @@ class YandexApi
             ->setIds([floatval($id)]);
         $payload = DeleteCampaignsRequest::create()
             ->setSelectionCriteria($criteria);
-        return $this->user->getCampaignsService()->delete($payload);
 
+        $req = $this->user->getCampaignsService();
+        $rez = $req->delete($payload);
+        $this->units = $req->getUnits();
+
+        return $rez;
     }
 
     public function getCampain($ids)
@@ -215,7 +258,11 @@ class YandexApi
                 TextCampaignFieldEnum::RELEVANT_KEYWORDS
             ]);
 
-        return $this->user->getCampaignsService()->get($request);
+        $req = $this->user->getCampaignsService();
+        $rez = $req->get($request);
+        $this->units = $req->getUnits();
+
+        return $rez;
     }
 
     public function removeGroup($groupId)
@@ -225,8 +272,12 @@ class YandexApi
 
         $request = DeleteAdGroupsRequest::create()
             ->setSelectionCriteria($critearia);
-        return $this->user->getAdGroupsService()->delete($request);
 
+        $req = $this->user->getAdGroupsService();
+        $rez = $req->delete($request);
+        $this->units = $req->getUnits();
+
+        return $rez;
     }
 
 
@@ -246,7 +297,11 @@ class YandexApi
                 KeywordFieldEnum::STATISTICS_SEARCH,
                 KeywordFieldEnum::STATISTICS_NETWORK,
             ]);
-        return $this->user->getKeywordsService()->get($request);
+
+        $req = $this->user->getKeywordsService();
+        $rez = $req->get($request);
+        $this->units = $req->getUnits();
+        return $rez;
     }
 
     public function createNewWordstatReport($regions, $words)
@@ -280,7 +335,11 @@ class YandexApi
 
         $request = DeleteKeywordsRequest::create()
             ->setSelectionCriteria($criteria);
-        return $this->user->getKeywordsService()->delete($request);
+
+        $req = $this->user->getKeywordsService();
+        $rez = $req->delete($request);
+        $this->units = $req->getUnits();
+        return $rez;
     }
 
     public function addKeyword($groupId, $word, $isAutotargeting)
@@ -306,7 +365,11 @@ class YandexApi
         $request = AddKeywordsRequest::create()
             ->setKeywords( $keywords);
 
-        return $this->user->getKeywordsService()->add($request);
+
+        $req = $this->user->getKeywordsService();
+        $rez = $req->add($request);
+        $this->units = $req->getUnits();
+        return $rez;
 
     }
 
@@ -317,7 +380,12 @@ class YandexApi
             ->setKeywordId($keywordId);
         $request = SetAutoBidsRequest::create()
             ->setBids([$bidSetAutoItem]);
-        return $this->user->getBidsService()->setAuto($request);
+
+
+        $req = $this->user->getBidsService();
+        $rez = $req->setAuto($request);
+        $this->units = $req->getUnits();
+        return $rez;
     }
 
     public function createBidsItem($keywordId){
@@ -328,7 +396,12 @@ class YandexApi
     public function doBidsRequest(array $bidsItemArray){
         $request = SetBidsRequest::create()
             ->setBids($bidsItemArray);
-        return $this->user->getBidsService()->set($request);
+
+        $req = $this->user->getBidsService();
+        $rez = $req->set($request);
+        $this->units = $req->getUnits();
+        return $rez;
+
     }
     public function setBids($keywordId)
     {
@@ -338,7 +411,11 @@ class YandexApi
 
         $request = SetBidsRequest::create()
             ->setBids([$bidSetItem]);
-        return $this->user->getBidsService()->set($request);
+
+        $req = $this->user->getBidsService();
+        $rez = $req->set($request);
+        $this->units = $req->getUnits();
+        return $rez;
     }
 
 
@@ -359,7 +436,11 @@ class YandexApi
                 BidFieldEnum::MIN_SEARCH_PRICE,
                 BidFieldEnum::SEARCH_PRICES
             ]);
-        return $this->user->getBidsService()->get($request);
+
+        $req = $this->user->getBidsService();
+        $rez = $req->get($request);
+        $this->units = $req->getUnits();
+        return $rez;
     }
 
     public function getCampaingGroups($ids)
@@ -377,7 +458,10 @@ class YandexApi
                 AdGroupFieldEnum::RESTRICTED_REGION_IDS,
             ]);
 
-        return $this->user->getAdGroupsService()->get($request);
+        $req = $this->user->getAdGroupsService();
+        $rez = $req->get($request);
+        $this->units = $req->getUnits();
+        return $rez;
     }
 
     //получаем подсказки по словам

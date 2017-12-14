@@ -66,28 +66,9 @@ class YandexDirect extends Command
      */
     public function handle()
     {
-        /*
-                Forecastinfo::insertGetId(
-                    [
-                        'min' => 1.0,
-                        'max' => 1.0,
-                        'premium_min' => 1.0,
-                        'premium_max' => 1.0,
-                        'shows' => 1,
-                        'clicks' => 1,
-                        'first_place_clicks' => 1,
-                        'premium_clicks' => 1,
-                        'ctr' => 1,
-                        'first_place_ctr' => 1,
-                        'premium_ctr' => 1,
-                        'currency' => 'ru',
-                        'Keywords_id' => 2,
-                        'created_at'=>Carbon::now(),
-                        'updated_at'=>Carbon::now(),
-                    ]
-                );
+        //error_log(DB::connection()->getDatabaseName());
+        //return;
 
-                return;*/
         /*
          * Режимы работы:
          * 0) Наполнение базы вводными словами и словосочетаниями из файла
@@ -176,8 +157,16 @@ class YandexDirect extends Command
             $this->doStep1($select_db_word, 1); //режим уточнения
 
             $this->doStep3_1();//режим выбора данных из forecast
-            $this->doStep3_2();//режим выбора данных из кампаний
-
+            try {
+                //если балы есть или время ожидания прошло, тогда выполняем этап, требующий балы
+                //иначе мы крашимся, ставим время ожидания и просто переходим к выполнению следующего цикла
+                if ($this->api->getUnits()->getRest()>0||$this->api->checkUnitsTime())
+                    $this->doStep3_2();//режим выбора данных из кампаний
+            }
+            catch(ApiException $ae){
+                $this->log->error("Ошибка количества баллов:".$ae->getTraceAsString()." Продолжаем работу в режиме сбора слов!");
+                $this->api->updateUnitsTime();
+            }
             $this->doFinalCheck();
         }
 
@@ -461,6 +450,7 @@ class YandexDirect extends Command
 
         }
 
+        error_log(var_dump($this->api->getUnits()));
         //формируем слова для массива, который затем будет дбавлен в группу
         $buf = array();
         foreach ($keywords_for_group as $kwfg) {
