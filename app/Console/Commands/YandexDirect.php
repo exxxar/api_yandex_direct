@@ -160,8 +160,13 @@ class YandexDirect extends Command
             try {
                 //если балы есть или время ожидания прошло, тогда выполняем этап, требующий балы
                 //иначе мы крашимся, ставим время ожидания и просто переходим к выполнению следующего цикла
+
                 if ($this->api->getUnits()->getRest()>0||$this->api->checkUnitsTime())
                     $this->doStep3_2();//режим выбора данных из кампаний
+                else
+                {
+                    $this->log->error("Количество оставшихся баллов:".$this->api->getUnits()->getRest()." Осталось времени:".$this->api->getRefreshUnitsTime());
+                }
             }
             catch(ApiException $ae){
                 $this->log->error("Ошибка количества баллов:".$ae->getTraceAsString()." Продолжаем работу в режиме сбора слов!");
@@ -342,7 +347,18 @@ class YandexDirect extends Command
 
             try {
                 $fKwId = Keywords::where("keyword", $wr->getPhrase())->first();
-                if (!empty($fKwId)) {
+                /*          SELECT COUNT(`id`), `Keywords_id`
+            FROM `forecastinfo`  WHERE `Keywords_id`=1
+            GROUP BY `Keywords_id`
+            ORDER BY COUNT(`id`) DESC
+*/
+                //проверка на наличие в бд уже существующих элементов с Keywords_id
+                $fcount = Forecastinfo::select('Keywords_id', DB::raw('count(id)'))
+                            ->groupBy('Keywords_id')
+                            ->where("Keywords_id", $fKwId->id)
+                            ->count();
+                $this->log->info("Forecast информация по[" . $fKwId->id . " ](".($fcount==0?"будет добавлена":"уже есть в колличестве ($fcount)").")");
+                if (!empty($fKwId)&&$fcount==0) {
                     Forecastinfo::insertGetId(
                         [
                             'min' => $wr->getMin(),
@@ -450,7 +466,6 @@ class YandexDirect extends Command
 
         }
 
-        error_log(var_dump($this->api->getUnits()));
         //формируем слова для массива, который затем будет дбавлен в группу
         $buf = array();
         foreach ($keywords_for_group as $kwfg) {

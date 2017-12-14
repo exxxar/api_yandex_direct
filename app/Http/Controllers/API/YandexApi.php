@@ -65,6 +65,7 @@ use Biplane\YandexDirect\User;
 
 class YandexApi
 {
+    const TIME_SPENT = 1000;
     private $user;
     private $units;
     private $unitsTime;
@@ -88,10 +89,14 @@ class YandexApi
     }
 
     public function checkUnitsTime(){
-        return ((Carbon::Now())->timestamp>$this->unitsTime+1000);
+        return ((Carbon::Now())->timestamp>$this->unitsTime+self::TIME_SPENT);
     }
     public function updateUnitsTime(){
         $this->unitsTime = (Carbon::Now())->timestamp;
+    }
+
+    public function getRefreshUnitsTime(){
+        return abs((Carbon::Now())->timestamp-($this->unitsTime+self::TIME_SPENT));
     }
 
     public function getUnits(){
