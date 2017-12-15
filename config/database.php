@@ -52,8 +52,11 @@ return [
             'prefix' => '',
             'strict' => true,
             'engine' => null,
-            /*'sslmode' => env('DB_SSLMODE', 'prefer'),
-            'options'   => array(
+            /*'sslmode' => env('DB_SSLMODE', 'VerifyCA'),//VerifyCA VERIFY_CA
+            'CertificateFile'=>'C:\\Users\\Администратор\\Documents\\KeywordsCost New Version\\CertFiles\\client.pfx',
+            'CertificatePassword'=>'pass',*/
+
+            /*'options'   => array(
                 PDO::MYSQL_ATTR_SSL_KEY => 'C:\\MySQL\\Certs\\client-key.pem',
                 PDO::MYSQL_ATTR_SSL_CERT => 'C:\\MySQL\\Certs\\client-cert.pem',
                 PDO::MYSQL_ATTR_SSL_CA => 'C:\\MySQL\\Certs\\ca-cert.pem',

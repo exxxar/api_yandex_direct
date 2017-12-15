@@ -125,8 +125,14 @@ class YandexDirect extends Command
 
         switch ($this->argument('type')) {
             default:
+            case 'prepare':
+                    $this->doStep0("log_db2.txt",true);
+                break;
             case 'start':
                 $this->doMain();
+                break;
+            case 'start:reverse':
+                $this->doMain(true);
                 break;
             case 'reset:test':
                 error_log("test");
@@ -142,11 +148,14 @@ class YandexDirect extends Command
     }
 
 
-    public function doMain()
+    public function doMain($reverse=false)
     {
         $this->doStep0();
 
-        $words_from_db = Keywords::where('check', null)->get();
+        $words_from_db = Keywords::where('check', null)
+            ->orderBy('id', $reverse?'ASC':'DESC')
+            ->get();
+
         foreach ($words_from_db as $select_db_word) {
             //говорим что слово использовано
             $kw = Keywords::findOrFail($select_db_word->id);
@@ -164,7 +173,7 @@ class YandexDirect extends Command
             }
 
             try {
-                $this->doStep3_1();//режим выбора данных из forecast
+                $this->doStep3_1($reverse);//режим выбора данных из forecast
             } catch (ApiException $ae) {
             }
 
@@ -192,7 +201,7 @@ class YandexDirect extends Command
         if (Keywords::count() == 0 || $refresh == True) {
             $this->log->info($refresh ? "Режим обновления" : "В таблице 'Keywords' отсутствуют слова, получаем из файла");
             $contents = Storage::disk('public')->get($fname);
-            $contents = preg_split('/[\s,]+/', $contents);
+            $contents = preg_split('/[\s,]+\n/', $contents);
             $index = 0;
             foreach ($contents as $c) {
                 $index++;
@@ -322,7 +331,7 @@ class YandexDirect extends Command
                 GROUP BY `Keywords_id`
                 ORDER BY COUNT(`id`) DESC
 */
-    protected function doStep3_1($regions = [1])
+    protected function doStep3_1($reverse=false,$regions = [1])
     {
         $this->log->info("Этап 3.1 - начало этапа");
         $this->log->info("Берем порциям все ключевые слова, для которых нет соответствия в таблице forecastinfo");
@@ -330,6 +339,7 @@ class YandexDirect extends Command
             $query->select('Keywords_id')
                 ->from('forecastinfo');
         })
+            ->orderBy('id', $reverse?'ASC':'DESC')
             ->limit(self::MAX_FORECAST)
             ->get();
 
