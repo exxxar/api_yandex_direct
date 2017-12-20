@@ -493,6 +493,7 @@ class YandexApi
         $newForecastInfo->setPhrases($keyword);
         $newForecastInfo->setGeoID($regions);
         $newForecastInfo->setAuctionBids("Yes");
+        $newForecastInfo->setCurrency("RUB");
 
 
         return $this->user->getApiService()->createNewForecast($newForecastInfo);

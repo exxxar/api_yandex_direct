@@ -41,27 +41,28 @@ return [
 
         'mysql' => [
             'driver' => 'mysql',
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '3306'),
-            'database' => env('DB_DATABASE', 'forge'),
-            'username' => env('DB_USERNAME', 'forge'),
-            'password' => env('DB_PASSWORD', ''),
-            'unix_socket' => env('DB_SOCKET', ''),
-            'charset' => 'utf8mb4',
-            'collation' => 'utf8mb4_unicode_ci',
-            'prefix' => '',
-            'strict' => true,
-            'engine' => null,
-            /*'sslmode' => env('DB_SSLMODE', 'VerifyCA'),//VerifyCA VERIFY_CA
-            'CertificateFile'=>'C:\\Users\\Администратор\\Documents\\KeywordsCost New Version\\CertFiles\\client.pfx',
-            'CertificatePassword'=>'pass',*/
+            'host' => env((env('DB_SSL')) ? 'DB_SSL_HOST':'DB_HOST', '127.0.0.1'),
+            'port' => env((env('DB_SSL')) ? 'DB_SSL_PORT':'DB_PORT', '3306'),
+            'database' => env((env('DB_SSL')) ? 'DB_SSL_DATABASE':'DB_DATABASE', 'forge'),
+            'username' => env((env('DB_SSL')) ? 'DB_SSL_USERNAME':'DB_USERNAME', 'forge'),
+            'password' => env((env('DB_SSL')) ? 'DB_SSL_PASSWORD':'DB_PASSWORD', ''),
+             'unix_socket' => env('DB_SOCKET', ''),
+             'charset' => 'utf8',
+             'collation' => 'utf8_unicode_ci',
+             'prefix' => '',
+             'strict' => true,
+             'engine' => null,
+            'options' => (env('DB_SSL')) ? [
+                PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT=>false,
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_SSL_CA')
+             /*
+                PDO::MYSQL_ATTR_SSL_KEY    => env('MYSQL_SSL_KEY'),
+                PDO::MYSQL_ATTR_SSL_CERT   => env('MYSQL_SSL_CERT'),
+                PDO::MYSQL_ATTR_SSL_CA     => env('MYSQL_SSL_CA'),
+                PDO::MYSQL_ATTR_SSL_CIPHER => env('MYSQL_SSL_CIPHER')*/
+            ] : []
 
-            /*'options'   => array(
-                PDO::MYSQL_ATTR_SSL_KEY => 'C:\\MySQL\\Certs\\client-key.pem',
-                PDO::MYSQL_ATTR_SSL_CERT => 'C:\\MySQL\\Certs\\client-cert.pem',
-                PDO::MYSQL_ATTR_SSL_CA => 'C:\\MySQL\\Certs\\ca-cert.pem',
-                PDO::MYSQL_ATTR_SSL_CIPHER=>'DHE-RSA-AES256-SHA'
-            ),*/
+
         ],
 
         'pgsql' => [

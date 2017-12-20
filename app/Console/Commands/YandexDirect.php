@@ -153,7 +153,7 @@ class YandexDirect extends Command
         $this->doStep0();
 
         $words_from_db = Keywords::where('check', null)
-            ->orderBy('id', $reverse?'ASC':'DESC')
+            ->orderBy('id', $reverse?'DESC':'ASC')
             ->get();
 
         foreach ($words_from_db as $select_db_word) {
@@ -335,11 +335,12 @@ class YandexDirect extends Command
     {
         $this->log->info("Этап 3.1 - начало этапа");
         $this->log->info("Берем порциям все ключевые слова, для которых нет соответствия в таблице forecastinfo");
-        $keywords_without_forecast = Keywords::whereNotIn('id', function ($query) {
+        $keywords_without_forecast = Keywords::whereNotIn('id', function ($query) use($reverse) {
             $query->select('Keywords_id')
-                ->from('forecastinfo');
+                ->from('forecastinfo')
+                ->orderBy('id', $reverse?'DESC':'ASC');
         })
-            ->orderBy('id', $reverse?'ASC':'DESC')
+            ->orderBy('id', $reverse?'DESC':'ASC')
             ->limit(self::MAX_FORECAST)
             ->get();
 
