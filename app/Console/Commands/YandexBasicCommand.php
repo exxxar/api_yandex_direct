@@ -8,21 +8,16 @@
 
 namespace App\Console\Commands;
 
+use App\Forecastinfo;
 use App\Http\Controllers\API\YandexApi;
-
 use App\Keywords;
-
-use Illuminate\Console\Command;
-
 use Illuminate\Support\Carbon;
 use Illuminate\Contracts\Logging\Log;
-
 use Illuminate\Support\Facades\Storage;
 
 
-trait YandexBasicCommand {
-
-
+trait YandexBasicCommand
+{
     protected $api;
     protected $log;
 
@@ -30,6 +25,7 @@ trait YandexBasicCommand {
     {
         $this->api = $api;
         $this->log = $log;
+
     }
 
     public function doStep0($fname = "words.txt", $refresh = false)
@@ -104,6 +100,19 @@ trait YandexBasicCommand {
         $this->log->info('Все check у слов успешно сброшены!');
     }
 
+    public function doResetChecksIfForecastNotFound()
+    {
+        $words = Keywords::where('check', 1)->get();
+        foreach ($words as $w) {
+            $forecast = Forecastinfo::find($w->id);
+            if (empty($forecast)) {
+                $w->check = null;
+                $w->save();
+            }
+        }
+        $this->log->info('Все check у слов успешно сброшены!');
+    }
+
     public function doResetCampaings()
     {
         $this->log->info("Запуск режима сброса информации о компаниях!");
@@ -141,6 +150,13 @@ trait YandexBasicCommand {
 
     public function restoringPrecede($keyword)
     {
-        return preg_replace("/[!\[\]\"]/i", "", $keyword);
+        $rez = trim(preg_replace("/[!\[\]\"]/i", "", $keyword));
+
+        $rezInArray = explode(" ",$rez);
+        $buf = "";
+        foreach ($rezInArray as $r){
+            $buf .=(strlen(trim($r))>0?trim($r)." ":"");
+        }
+        return $buf;
     }
 }

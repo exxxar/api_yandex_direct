@@ -6,20 +6,12 @@ use App\AuctionBids;
 use App\CompetitorsBids;
 use App\ContextCoverage;
 use App\Forecastinfo;
-use App\Http\Controllers\API\YandexApi;
-use App\Http\Controllers\ApiDirectController;
 use App\Keywords;
-use Biplane\YandexDirect\Api\V5\Contract\DictionaryNameEnum;
 use Biplane\YandexDirect\Exception\ApiException;
 use Biplane\YandexDirect\Exception\LogicException;
 use Illuminate\Console\Command;
-
 use Illuminate\Support\Carbon;
-use Illuminate\Contracts\Logging\Log;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use League\Flysystem\File;
-
 
 class YandexDirect extends Command implements YandexDirectConst
 {

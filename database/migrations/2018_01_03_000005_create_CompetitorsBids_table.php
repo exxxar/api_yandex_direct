@@ -22,10 +22,10 @@ class CreateCompetitorsbidsTable extends Migration
             $table->engine = 'InnoDB';
             $table->increments('id');
             $table->integer('element')->nullable();
+            $table->dateTime('updated_at')->nullable();
             $table->unsignedInteger('Keywords_id');
 
             $table->index(["Keywords_id"], 'fk_CompetitorsBids_Keywords1_idx');
-            $table->nullableTimestamps();
 
 
             $table->foreign('Keywords_id', 'fk_CompetitorsBids_Keywords1_idx')

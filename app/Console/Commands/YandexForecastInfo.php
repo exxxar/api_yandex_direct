@@ -3,22 +3,24 @@
 namespace App\Console\Commands;
 
 
+use App\AuctionBids;
 use App\Forecastinfo;
 use App\Http\Controllers\API\YandexApi;
-
 use App\Keywords;
-
 use Biplane\YandexDirect\Exception\ApiException;
-
+use Dompdf\Exception;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use Illuminate\Contracts\Logging\Log;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 
 class YandexForecastInfo extends Command implements YandexDirectConst
 {
     use YandexBasicCommand;
+
+    protected $log;
+    protected $api;
     /**
      * The name and signature of the console command.
      *
@@ -39,8 +41,10 @@ class YandexForecastInfo extends Command implements YandexDirectConst
      * @return void
      */
 
-    public function __construct()
+    public function __construct(YandexApi $api, Log $log)
     {
+        $this->api = $api;
+        $this->log = $log;
         parent::__construct();
     }
 
@@ -51,14 +55,11 @@ class YandexForecastInfo extends Command implements YandexDirectConst
      */
     public function handle()
     {
-
-        error_log($this->restoringPrecede("\"[!квартира !окна !купить +на]\""));
-        //$this->doMain();
+        $this->doMain();
     }
 
     public function doMain($reverse = true)
     {
-
         $this->doStep0();
 
         $words_from_db = Keywords::where('check', null)
@@ -66,7 +67,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
             ->get();
 
         foreach ($words_from_db as $select_db_word) {
-            //говорим что слово использовано
+
             $kw = Keywords::findOrFail($select_db_word->id);
             $kw->check = True;
             $kw->save();
@@ -74,41 +75,39 @@ class YandexForecastInfo extends Command implements YandexDirectConst
             try {
                 $this->doStep1($select_db_word);//режим сбора
             } catch (ApiException $ae) {
+
             }
 
             try {
                 $this->doStep2();
             } catch (ApiException $ae) {
+
             }
+
+
         }
+        $this->doResetChecksIfForecastNotFound();
     }
 
     public function doStep1($select_db_word)
     {
-
-        $keyword_for_suggestion = $select_db_word->keyword;
-
         //получаем список подсказок по слову до тех пор пока это возможно
-        while (!empty($suggested_words = $this->api->getKeywordsSuggestion($keyword_for_suggestion))) {
+        $suggested_words = $this->api->getKeywordsSuggestion($select_db_word->keyword);
 
-            $this->log->info("Получаем список подсказок по ключевому слову!");
-            //проходим циклом по подсказкам, проверяем нет ли слова в бд
-            //если нет - добавляем слово в бд
-            foreach ($suggested_words as $sw) {
-                $this->log->info("Подсказка: $sw");
-                $fKw = Keywords::where("keyword", $sw)->first();
-                if (empty($fKw)) {
-                    Keywords::insertGetId(
-                        [
-                            'keyword' => $sw,
-                            'created_at' => Carbon::now(),
-                            'updated_at' => Carbon::now()
-                        ]
-                    );
-
-                    //добавляем слово через разделить чтоб запросить еще больше подсказок
-                    $keyword_for_suggestion .= "," . $sw;
-                }
+        $this->log->info("Получаем список подсказок по ключевому слову!");
+        //проходим циклом по подсказкам, проверяем нет ли слова в бд
+        //если нет - добавляем слово в бд
+        foreach ($suggested_words as $sw) {
+            $this->log->info("Подсказка: $sw");
+            $fKw = Keywords::where("keyword", $sw)->first();
+            if (empty($fKw)) {
+                Keywords::insertGetId(
+                    [
+                        'keyword' => $sw,
+                        'created_at' => Carbon::now(),
+                        'updated_at' => Carbon::now()
+                    ]
+                );
             }
         }
 
@@ -156,57 +155,80 @@ class YandexForecastInfo extends Command implements YandexDirectConst
 
         foreach ($report->getPhrases() as $wr) {
             //каждый репорт содержит большой набор словоформ
-
             try {
                 $fKwId = Keywords::where("keyword", $this->restoringPrecede($wr->getPhrase()))->first();
                 if (empty($fKwId)) {
-                    $fKwId->id = Keywords::insertGetId([
-                        'keyword' => $wr->getPhrase(),
+
+                    $inserted_id = Keywords::insertGetId([
+                        'keyword' => $this->restoringPrecede($wr->getPhrase()),
                         'created_at' => Carbon::now(),
                         'updated_at' => Carbon::now()
                     ]);
+
+                    $fKwId = Keywords::findOne($inserted_id);
+
+                    error_log("в этом моменте у нас нет ключевого слова, но мы пытаемся добавить id " . $fKwId->id);
                 }
-                //проверка на наличие в бд уже существующих элементов с Keywords_id
-                $fcount = Forecastinfo::select('Keywords_id', DB::raw('count(id)'))
-                    ->groupBy('Keywords_id')
-                    ->where("Keywords_id", $fKwId->id)
-                    ->count();
-                $this->log->info("Forecast информация по[" . $fKwId->id . "](" . ($fcount == 0 ? "будет добавлена" : "уже есть в колличестве ($fcount)") . ")");
-                if (!empty($fKwId) && $fcount == 0) {
-                    Forecastinfo::insertGetId(
-                        [
-                            'min' => $wr->getMin(),
-                            'max' => $wr->getMax(),
-                            'premium_min' => $wr->getPremiumMin(),
-                            'premium_max' => $wr->getPremiumMax(),
-                            'shows' => $wr->getShows(),
-                            'clicks' => $wr->getClicks(),
-                            'first_place_clicks' => $wr->getFirstPlaceClicks(),
-                            'premium_clicks' => $wr->getPremiumClicks(),
-                            'ctr' => $wr->getCTR(),
-                            'first_place_ctr' => $wr->getFirstPlaceCTR(),
-                            'premium_ctr' => $wr->getPremiumCTR(),
-                            'currency' => $wr->getCurrency(),
-                            'Keywords_id' => $fKwId->id,
-                            'created_at' => Carbon::now(),
-                            'updated_at' => Carbon::now(),
-                            'is_preceded' => strpos($kw->getPhrase(), "!") == False ? 0 : 1
-                        ]
-                    );
-                    $this->log->info("Добавляем информацию для фразы [" . $fKwId->keyword . " ]");
+
+                if (!empty($fKwId) ) {
+
+                    $forecastInfo = new Forecastinfo();
+                    $forecastInfo->min = $wr->getMin();
+                    $forecastInfo->max = $wr->getMax();
+                    $forecastInfo->premium_min = $wr->getPremiumMin();
+                    $forecastInfo->premium_max = $wr->getPremiumMax();
+                    $forecastInfo->shows = $wr->getShows();
+                    $forecastInfo->clicks = $wr->getClicks();
+                    $forecastInfo->first_place_clicks = $wr->getFirstPlaceClicks();
+                    $forecastInfo->premium_clicks = $wr->getPremiumClicks();
+                    $forecastInfo->ctr = $wr->getCTR();
+                    $forecastInfo->first_place_ctr = $wr->getFirstPlaceCTR();
+                    $forecastInfo->premium_ctr = $wr->getPremiumCTR();
+                    $forecastInfo->currency = $wr->getCurrency();
+                    $forecastInfo->Keywords_id = $fKwId->id;
+                    $forecastInfo->created_at = Carbon::now();
+                    $forecastInfo->updated_at = Carbon::now();
+                    $forecastInfo->is_preceded = strpos($wr->getPhrase(), "!") == False ? False : True;
+                    $forecastInfo->save();
+
+
+                    foreach ($wr->getAuctionBids() as $ab) {
+                        $pos = 0;
+
+                        switch (strtoupper($ab->Position)) {
+                            case 'P11':
+                                $pos = 1;
+                                break;
+                            case 'P12':
+                                $pos = 2;
+                                break;
+                            case 'P21':
+                                $pos = 3;
+                                break;
+                            case 'P22':
+                                $pos = 4;
+                                break;
+                        }
+                        $auctionBids = new AuctionBids();
+
+                        $auctionBids->position = $pos;
+                        $auctionBids->bid = $ab->Bid;
+                        $auctionBids->price = $ab->Price;
+                        $auctionBids->Keywords_id = $fKwId->id;
+                        $auctionBids->updated_at = Carbon::now();
+                        $auctionBids->save();
+                    }
+
                 }
 
 
             } catch (\Exception $e) {
-                $this->log->error("Не удалось добавить информацию базу: " . $e->getMessage());
+
             }
         }
-
-        $this->log->info("Удаляем Foreacst отчет [" . $reports[0]->getForecastID() . "]");
         //удаляем репорт
         $this->api->deleteForecastReport($reports[0]->getForecastID());
 
-        $this->log->info("Этап 2 - завершение этапа");
     }
 
 }

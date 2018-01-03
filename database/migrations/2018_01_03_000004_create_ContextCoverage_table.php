@@ -2,16 +2,16 @@
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
-class CreateAdpostionsTable extends Migration
+class CreateContextcoverageTable extends Migration
 {
     /**
      * Schema table name to migrate
      * @var string
      */
-    public $set_schema_table = 'AdPostions';
+    public $set_schema_table = 'ContextCoverage';
     /**
      * Run the migrations.
-     * @table AdPostions
+     * @table ContextCoverage
      *
      * @return void
      */
@@ -21,17 +21,15 @@ class CreateAdpostionsTable extends Migration
         Schema::create($this->set_schema_table, function (Blueprint $table) {
             $table->engine = 'InnoDB';
             $table->increments('id');
-            $table->string('url')->nullable();
-            $table->string('description')->nullable();
-            $table->string('positions')->nullable();
-            $table->integer('search_engine')->nullable();
+            $table->integer('probability')->nullable();
+            $table->integer('price')->nullable();
+            $table->dateTime('updated_at')->nullable();
             $table->unsignedInteger('Keywords_id');
 
-            $table->index(["Keywords_id"], 'fk_AdPostions_Keywords1_idx');
-            $table->nullableTimestamps();
+            $table->index(["Keywords_id"], 'fk_ContextCoverage_Keywords1_idx');
 
 
-            $table->foreign('Keywords_id', 'fk_AdPostions_Keywords1_idx')
+            $table->foreign('Keywords_id', 'fk_ContextCoverage_Keywords1_idx')
                 ->references('id')->on('Keywords')
                 ->onDelete('no action')
                 ->onUpdate('no action');

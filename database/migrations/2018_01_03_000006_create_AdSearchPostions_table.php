@@ -2,16 +2,16 @@
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
-class CreateForecastinfoTable extends Migration
+class CreateAdsearchpostionsTable extends Migration
 {
     /**
      * Schema table name to migrate
      * @var string
      */
-    public $set_schema_table = 'forecastInfo';
+    public $set_schema_table = 'AdSearchPostions';
     /**
      * Run the migrations.
-     * @table forecastInfo
+     * @table AdSearchPostions
      *
      * @return void
      */
@@ -21,25 +21,26 @@ class CreateForecastinfoTable extends Migration
         Schema::create($this->set_schema_table, function (Blueprint $table) {
             $table->engine = 'InnoDB';
             $table->increments('id');
-            $table->double('min')->nullable();
-            $table->double('max')->nullable();
-            $table->double('premium_min')->nullable();
-            $table->double('premium_max')->nullable();
-            $table->integer('shows')->nullable();
-            $table->integer('clicks')->nullable();
-            $table->integer('first_place_clicks')->nullable();
-            $table->integer('premium_clicks')->nullable();
-            $table->double('ctr')->nullable();
-            $table->double('first_place_ctr')->nullable();
-            $table->double('premium_ctr')->nullable();
-            $table->string('currency', 10)->nullable();
+            $table->string('description')->nullable();
+            $table->unsignedInteger('positions');
+            $table->integer('search_engine')->nullable();
+            $table->tinyInteger('is_ad')->nullable();
+            $table->unsignedInteger('region_id');
+            $table->unsignedInteger('Url_id');
             $table->unsignedInteger('Keywords_id');
 
-            $table->index(["Keywords_id"], 'fk_forecastInfo_Keywords1_idx');
+            $table->index(["Keywords_id"], 'fk_AdSearchPostions_Keywords1_idx');
+
+            $table->index(["Url_id"], 'fk_AdSearchPostions_Url1_idx');
             $table->nullableTimestamps();
 
 
-            $table->foreign('Keywords_id', 'fk_forecastInfo_Keywords1_idx')
+            $table->foreign('Url_id', 'fk_AdSearchPostions_Url1_idx')
+                ->references('id')->on('Url')
+                ->onDelete('no action')
+                ->onUpdate('no action');
+
+            $table->foreign('Keywords_id', 'fk_AdSearchPostions_Keywords1_idx')
                 ->references('id')->on('Keywords')
                 ->onDelete('no action')
                 ->onUpdate('no action');

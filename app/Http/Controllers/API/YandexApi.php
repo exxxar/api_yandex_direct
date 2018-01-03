@@ -313,7 +313,7 @@ class YandexApi
     {
         $request = NewWordstatReportInfo::create()
             ->setGeoID($regions)
-            ->setPhrases($words);
+            ->setPhrases(typeOf($words)=="array"?$words:[$words]);
         return $this->user->getApiService()->createNewWordstatReport($request);
     }
 
