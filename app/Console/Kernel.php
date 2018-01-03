@@ -14,7 +14,8 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
-        \App\Console\Commands\YandexDirect::class
+        \App\Console\Commands\YandexDirect::class,
+        \App\Console\Commands\YandexForecastInfo::class
     ];
 
     /**
