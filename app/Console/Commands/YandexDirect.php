@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Storage;
 use League\Flysystem\File;
 
 
-class YandexDirect extends YandexBasicCommand
+class YandexDirect extends Command implements YandexDirectConst
 {
     /**
      * The name and signature of the console command.
@@ -44,7 +44,7 @@ class YandexDirect extends YandexBasicCommand
      */
     public function __construct()
     {
-        parent::__construct();
+       parent::__construct();
     }
 
 
@@ -55,8 +55,7 @@ class YandexDirect extends YandexBasicCommand
      */
     public function handle()
     {
-        //error_log(DB::connection()->getDatabaseName());
-        //return;
+        //TODO: ПЕРЕДЕЛАТЬ ПОД НОВУЮ БАЗУ ИНАЧЕ ЭТОТ СКРИПТ РАБОТАТЬ НЕ БУДЕТ!!!
 
         /*
          * Режимы работы:
