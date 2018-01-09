@@ -62,31 +62,37 @@ class YandexForecastInfo extends Command implements YandexDirectConst
     {
         $this->doStep0();
 
-        $words_from_db = Keywords::where('check', null)
-            ->orderBy('id', $reverse ? 'DESC' : 'ASC')
-            ->get();
+        while (true) {
+            $words_from_db = Keywords::where('check', null)
+                ->orderBy('id', $reverse ? 'DESC' : 'ASC')
+                ->get();
 
-        foreach ($words_from_db as $select_db_word) {
 
-            $kw = Keywords::findOrFail($select_db_word->id);
-            $kw->check = True;
-            $kw->save();
+            foreach ($words_from_db as $select_db_word) {
 
-            try {
-                $this->doStep1($select_db_word);//режим сбора
-            } catch (ApiException $ae) {
+                $kw = Keywords::findOrFail($select_db_word->id);
+                $kw->check = True;
+                $kw->save();
+
+                try {
+                    $this->doStep1($select_db_word);//режим сбора
+                } catch (ApiException $ae) {
+
+                }
+
+                try {
+                    $this->doStep2();
+                } catch (ApiException $ae) {
+
+                }
+
 
             }
+            $this->doResetChecksIfForecastNotFound();
 
-            try {
-                $this->doStep2();
-            } catch (ApiException $ae) {
-
-            }
-
-
+            if (count($words_from_db)<=0)
+                break;
         }
-        $this->doResetChecksIfForecastNotFound();
     }
 
     public function doStep1($select_db_word)
