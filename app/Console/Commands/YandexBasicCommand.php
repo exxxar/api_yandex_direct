@@ -159,4 +159,24 @@ trait YandexBasicCommand
         }
         return $buf;
     }
+
+    public function checkLenAndSlice($keyword) {
+        $text = mb_split(" ",$keyword);
+        $new_keyword = "";
+        $index = 7;
+        if (count($text)>7) {
+            foreach ($text as $word) {
+                $new_keyword .= trim($word)." ";
+                $index--;
+                if ($index==0)
+                    break;
+            }
+        }
+        return count($text)>7?trim( $new_keyword):$keyword;
+    }
+
+    public function word_count($keyword){
+        $text = mb_split(" ",$keyword);
+        return count($text);
+    }
 }

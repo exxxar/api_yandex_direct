@@ -15,4 +15,6 @@ interface YandexDirectConst
     const MAX_GROUPS = 9999;
     const MAX_KEYWORDS = 199;
     const MAX_FORECAST = 99;
+    const QUERY_LIMIT_EXCEEDED = 56;
+
 }

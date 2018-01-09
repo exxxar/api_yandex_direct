@@ -22,16 +22,15 @@ class CreateAuctionbidsTable extends Migration
             $table->engine = 'InnoDB';
             $table->increments('id');
             $table->unsignedInteger('position');
-            $table->integer('bid')->nullable();
-            $table->integer('price')->nullable();
-            $table->dateTime('updated_at')->nullable();
-            $table->unsignedInteger('Keywords_id');
+            $table->float('bid')->nullable();
+            $table->float('price')->nullable();
+            $table->integer('forecastInfo_id')->unsigned()->index();
 
-            $table->index(["Keywords_id"], 'fk_AuctionBids_Keywords1_idx');
+            $table->index(["forecastInfo_id"], 'fk_AuctionBids_forecastInfo1_idx');
+            $table->nullableTimestamps();
 
-
-            $table->foreign('Keywords_id', 'fk_AuctionBids_Keywords1_idx')
-                ->references('id')->on('Keywords')
+            $table->foreign('forecastInfo_id', 'fk_AuctionBids_forecastInfo1_idx')
+                ->references('id')->on('forecastInfo')
                 ->onDelete('no action')
                 ->onUpdate('no action');
         });

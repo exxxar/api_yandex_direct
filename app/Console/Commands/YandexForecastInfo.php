@@ -77,20 +77,21 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                 try {
                     $this->doStep1($select_db_word);//режим сбора
                 } catch (ApiException $ae) {
-
+                    if ($ae->getCode()==self::QUERY_LIMIT_EXCEEDED)
+                        $this->doStep1_1($select_db_word);
                 }
 
                 try {
                     $this->doStep2();
                 } catch (ApiException $ae) {
-
+                    error_log("[2]=>" . $ae->getMessage());
                 }
 
 
             }
             $this->doResetChecksIfForecastNotFound();
 
-            if (count($words_from_db)<=0)
+            if (count($words_from_db) <= 0)
                 break;
         }
     }
@@ -98,18 +99,18 @@ class YandexForecastInfo extends Command implements YandexDirectConst
     public function doStep1($select_db_word)
     {
         //получаем список подсказок по слову до тех пор пока это возможно
-        $suggested_words = $this->api->getKeywordsSuggestion($select_db_word->keyword);
+        $suggested_words = $this->api->getKeywordsSuggestion($this->checkLenAndSlice($select_db_word->keyword));
 
         $this->log->info("Получаем список подсказок по ключевому слову!");
         //проходим циклом по подсказкам, проверяем нет ли слова в бд
         //если нет - добавляем слово в бд
         foreach ($suggested_words as $sw) {
             $this->log->info("Подсказка: $sw");
-            $fKw = Keywords::where("keyword", $sw)->first();
+            $fKw = Keywords::where("keyword", $this->checkLenAndSlice($sw))->first();
             if (empty($fKw)) {
                 Keywords::insertGetId(
                     [
-                        'keyword' => $sw,
+                        'keyword' => $this->checkLenAndSlice($sw),
                         'created_at' => Carbon::now(),
                         'updated_at' => Carbon::now()
                     ]
@@ -143,8 +144,10 @@ class YandexForecastInfo extends Command implements YandexDirectConst
         //в буфер помимо ключевого слова добавляется сразу же его уточненная копия, именно по этой причине
         //мы делим максимально возможное число слов в отчете пополам
         foreach ($keywords_without_forecast as $kw) {
-            array_push($buf, $kw->keyword);
-            array_push($buf, $this->divideAndPrecede($kw->keyword));
+            if (strlen(trim($kw->keyword)) > 0) {
+                array_push($buf, $this->checkLenAndSlice($kw->keyword));
+                array_push($buf, $this->divideAndPrecede($this->checkLenAndSlice($kw->keyword)));
+            }
         }
 
         $this->log->info("Формируем Forecast отчет");
@@ -154,6 +157,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
             $this->log->info($reports[0]->getForecastID() . " " . $reports[0]->getStatusForecast());
             $this->doRandomInterval();
         }
+
 
         $this->log->info("Получаем информацию из Forecast отчет [" . $reports[0]->getForecastID() . "]");
         $report = $this->api->getForecastInfo($reports[0]->getForecastID());
@@ -176,26 +180,35 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                     error_log("в этом моменте у нас нет ключевого слова, но мы пытаемся добавить id " . $fKwId->id);
                 }
 
-                if (!empty($fKwId) ) {
+                //SELECT COUNT(`Keywords_id`), `Keywords_id` FROM forecastinfo WHERE `Keywords_id`=1
 
-                    $forecastInfo = new Forecastinfo();
-                    $forecastInfo->min = $wr->getMin();
-                    $forecastInfo->max = $wr->getMax();
-                    $forecastInfo->premium_min = $wr->getPremiumMin();
-                    $forecastInfo->premium_max = $wr->getPremiumMax();
-                    $forecastInfo->shows = $wr->getShows();
-                    $forecastInfo->clicks = $wr->getClicks();
-                    $forecastInfo->first_place_clicks = $wr->getFirstPlaceClicks();
-                    $forecastInfo->premium_clicks = $wr->getPremiumClicks();
-                    $forecastInfo->ctr = $wr->getCTR();
-                    $forecastInfo->first_place_ctr = $wr->getFirstPlaceCTR();
-                    $forecastInfo->premium_ctr = $wr->getPremiumCTR();
-                    $forecastInfo->currency = $wr->getCurrency();
-                    $forecastInfo->Keywords_id = $fKwId->id;
-                    $forecastInfo->created_at = Carbon::now();
-                    $forecastInfo->updated_at = Carbon::now();
-                    $forecastInfo->is_preceded = strpos($wr->getPhrase(), "!") == False ? False : True;
-                    $forecastInfo->save();
+                $fcount = Forecastinfo::select('Keywords_id', DB::raw('count(Keywords_id)'))
+                    ->groupBy('Keywords_id')
+                    ->where("Keywords_id", $fKwId->id)
+                    ->count();
+
+                if (!empty($fKwId) && $fcount < 2) {
+
+                    $forecastInfoId = Forecastinfo::insertGetId(
+                        [
+                            'min' => $wr->getMin(),
+                            'max' => $wr->getMax(),
+                            'premium_min' => $wr->getPremiumMin(),
+                            'premium_max' => $wr->getPremiumMax(),
+                            'shows' => $wr->getShows(),
+                            'clicks' => $wr->getClicks(),
+                            'first_place_clicks' => $wr->getFirstPlaceClicks(),
+                            'premium_clicks' => $wr->getPremiumClicks(),
+                            'ctr' => $wr->getCTR(),
+                            'first_place_ctr' => $wr->getFirstPlaceCTR(),
+                            'premium_ctr' => $wr->getPremiumCTR(),
+                            'currency' => $wr->getCurrency(),
+                            'Keywords_id' => $fKwId->id,
+                            'updated_at' => Carbon::now(),
+                            'created_at' => Carbon::now(),
+                            'is_preceded' => strpos($wr->getPhrase(), "!") == False ? False : True,
+                        ]
+                    );
 
 
                     foreach ($wr->getAuctionBids() as $ab) {
@@ -208,21 +221,35 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                             case 'P12':
                                 $pos = 2;
                                 break;
-                            case 'P21':
+                            case 'P13':
                                 $pos = 3;
                                 break;
-                            case 'P22':
+                            case 'P14':
                                 $pos = 4;
                                 break;
+                            case 'P21':
+                                $pos = 5;
+                                break;
+                            case 'P22':
+                                $pos = 6;
+                                break;
+                            case 'P23':
+                                $pos = 7;
+                                break;
+                            case 'P24':
+                                $pos = 8;
+                                break;
                         }
-                        $auctionBids = new AuctionBids();
 
-                        $auctionBids->position = $pos;
-                        $auctionBids->bid = $ab->Bid;
-                        $auctionBids->price = $ab->Price;
-                        $auctionBids->Keywords_id = $fKwId->id;
-                        $auctionBids->updated_at = Carbon::now();
-                        $auctionBids->save();
+                        AuctionBids::insertGetId(
+                            [
+                                'position' => $pos,
+                                'bid' => $ab->Bid,
+                                'price' => $ab->Price,
+                                'forecastInfo_id' => $forecastInfoId,
+                                'updated_at' => Carbon::now(),
+                            ]
+                        );
                     }
 
                 }
@@ -233,8 +260,46 @@ class YandexForecastInfo extends Command implements YandexDirectConst
             }
         }
         //удаляем репорт
-        $this->api->deleteForecastReport($reports[0]->getForecastID());
+        $forecast_reports = $this->api->getForecastList();
+        foreach ($forecast_reports as $report) {
+            $this->api->deleteForecastReport($report->getForecastID());
+            $this->doRandomInterval();
+        }
+    }
 
+    public function doStep1_1($select_db_word, $region = [1])
+    {
+        //обращаемся к вордстату по выбранному слову
+        $this->api->createNewWordstatReport($region,
+               $this->checkLenAndSlice($select_db_word->keyword));
+
+        $this->doRandomInterval();
+        //ждём завершение формирование отчета вордстата
+        while (($reports = $this->api->getWordstatReportList())[0]->getStatusReport() == "Pending") {
+            $this->log->info($reports[0]->getReportID() . " " . $reports[0]->getStatusReport());
+            $this->doRandomInterval();
+        }
+
+        //берем репорт по айди
+        $report = $this->api->getWordstatReport($reports[0]->getReportID());
+        foreach ($report as $wr) {
+            //каждый репорт содержит большой набор словоформ
+            foreach ($wr->getSearchedWith() as $sw) {
+                $fKwId = Keywords::where("keyword", $sw->getPhrase())->first();
+                if (empty($fKwId))
+                    Keywords::insertGetId(
+                        [
+                            'keyword' => $sw->getPhrase(),
+                            'created_at' => Carbon::now(),
+                            'updated_at' => Carbon::now()
+                        ]
+                    );
+
+            }
+        }
+
+        //удаляем текущий репорт
+        $this->api->deleteWordstatReport($reports[0]->getReportID());
     }
 
 }
