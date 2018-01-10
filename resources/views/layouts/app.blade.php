@@ -18,6 +18,7 @@
             <li><a href="{{url('/')}}" target="_blank">Страница поиска</a></li>
             <li><a href="{{url('/test/apidirect/suggestions')}}" target="_blank">Подсказки по словам</a></li>
             <li><a href="{{url('/test/apidirect/forecast')}}" target="_blank">Прогноз показов</a></li>
+            <li><a href="{{url('/manager/main')}}" target="_blank">Кабинет менеджера</a></li>
         </ul>
 
 

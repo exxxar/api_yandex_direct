@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Keywords;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ManagerController extends Controller
 {
     //
 
+    const LIMIT_ON_PAGE = 10;
     public function index(){
         return view("manager.index");
     }
@@ -29,5 +31,23 @@ class ManagerController extends Controller
         $term = $request->get("term");
         $kword = Keywords::where("keyword","=","$term")->first();
         return $kword;
+    }
+
+    public function getreport($page=0) {
+        $result = DB::table('keywords_best')
+            ->offset($page*self::LIMIT_ON_PAGE)
+            ->limit(self::LIMIT_ON_PAGE)
+            ->get();
+
+        return view("manager.report",["result"=>$result]);
+    }
+
+    public function getrobotdata(Request $request){
+        $result = DB::table('keywords_best')
+            //->offset($page*self::LIMIT_ON_PAGE)
+            //->limit(self::LIMIT_ON_PAGE)
+            ->get();
+
+        return $result;
     }
 }

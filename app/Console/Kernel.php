@@ -15,7 +15,8 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         \App\Console\Commands\YandexDirect::class,
-        \App\Console\Commands\YandexForecastInfo::class
+        \App\Console\Commands\YandexForecastInfo::class,
+         \App\Console\Commands\ViewChange_keywords_best::class
     ];
 
     /**

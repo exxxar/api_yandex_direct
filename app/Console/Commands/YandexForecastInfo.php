@@ -73,6 +73,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                 $kw = Keywords::findOrFail($select_db_word->id);
                 $kw->check = True;
                 $kw->save();
+                unset($kw);
 
                 try {
                     $this->doStep1($select_db_word);//режим сбора
@@ -94,6 +95,8 @@ class YandexForecastInfo extends Command implements YandexDirectConst
             if (count($words_from_db) <= 0)
                 break;
         }
+
+        unset($words_from_db);
     }
 
     public function doStep1($select_db_word)
@@ -105,7 +108,6 @@ class YandexForecastInfo extends Command implements YandexDirectConst
         //проходим циклом по подсказкам, проверяем нет ли слова в бд
         //если нет - добавляем слово в бд
         foreach ($suggested_words as $sw) {
-            $this->log->info("Подсказка: $sw");
             $fKw = Keywords::where("keyword", $this->checkLenAndSlice($sw))->first();
             if (empty($fKw)) {
                 Keywords::insertGetId(
@@ -116,14 +118,14 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                     ]
                 );
             }
+            unset($fKw);
         }
 
+        unset($suggested_words);
     }
 
     protected function doStep2($reverse = false, $regions = [1])
     {
-        $this->log->info("Этап 2 - начало этапа");
-        $this->log->info("Берем порциям все ключевые слова, для которых нет соответствия в таблице forecastinfo");
         $keywords_without_forecast = Keywords::whereNotIn('id', function ($query) use ($reverse) {
             $query->select('Keywords_id')
                 ->from('forecastinfo')
@@ -138,8 +140,6 @@ class YandexForecastInfo extends Command implements YandexDirectConst
             return;
         }
 
-        $this->log->info("Формируем массив слов для создания Forecast отчета");
-
         $buf = [];
         //в буфер помимо ключевого слова добавляется сразу же его уточненная копия, именно по этой причине
         //мы делим максимально возможное число слов в отчете пополам
@@ -150,16 +150,15 @@ class YandexForecastInfo extends Command implements YandexDirectConst
             }
         }
 
-        $this->log->info("Формируем Forecast отчет");
         $this->api->createNewForecast($buf, $regions);
+        unset($keywords_without_forecast);
+        unset($buf);
+
         $this->doRandomInterval();
         while (($reports = $this->api->getForecastList())[0]->getStatusForecast() == "Pending") {
-            $this->log->info($reports[0]->getForecastID() . " " . $reports[0]->getStatusForecast());
             $this->doRandomInterval();
         }
 
-
-        $this->log->info("Получаем информацию из Forecast отчет [" . $reports[0]->getForecastID() . "]");
         $report = $this->api->getForecastInfo($reports[0]->getForecastID());
 
 
@@ -251,20 +250,25 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                             ]
                         );
                     }
-
+                    unset($forecastInfoId);
                 }
 
 
             } catch (\Exception $e) {
 
             }
+
+            unset($fKwId);
+            unset($fcount);
         }
+        unset($report);
         //удаляем репорт
         $forecast_reports = $this->api->getForecastList();
         foreach ($forecast_reports as $report) {
             $this->api->deleteForecastReport($report->getForecastID());
             $this->doRandomInterval();
         }
+        unset($forecast_reports);
     }
 
     public function doStep1_1($select_db_word, $region = [1])
@@ -276,7 +280,6 @@ class YandexForecastInfo extends Command implements YandexDirectConst
         $this->doRandomInterval();
         //ждём завершение формирование отчета вордстата
         while (($reports = $this->api->getWordstatReportList())[0]->getStatusReport() == "Pending") {
-            $this->log->info($reports[0]->getReportID() . " " . $reports[0]->getStatusReport());
             $this->doRandomInterval();
         }
 
@@ -295,9 +298,10 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                         ]
                     );
 
+                unset($fKwId);
             }
         }
-
+        unset($report);
         //удаляем текущий репорт
         $this->api->deleteWordstatReport($reports[0]->getReportID());
     }

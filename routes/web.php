@@ -2,6 +2,8 @@
 Route::get('/','ManagerController@index');
 Route::get('/autocomplete','ManagerController@autocomplete');
 Route::post('/getdata','ManagerController@getdata');
+Route::get('/manager/main/{page?}','ManagerController@getreport');
+Route::get('/manager/robot','ManagerController@getrobotdata');
 
 Route::group(['prefix' => 'test'], function () {
     Route::group(['prefix' => 'apidirect'], function () {
