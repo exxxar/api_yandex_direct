@@ -38,12 +38,12 @@ class ViewChange_keywords_best extends Command
      */
     public function handle()
     {
-        //
         DB::statement("DROP VIEW keywords_best");
-        DB::statement("create view keywords_best as select keyword,price, premium_clicks, price*premium_clicks as budget from keywords 
+        DB::statement("select keyword,price, bid, is_preceded, shows, ctr,  price*shows*ctr as budget from keywords 
                 join forecastinfo on forecastinfo.Keywords_id=keywords.id
-                join auctionbids on auctionbids.forecastInfo_id=forecastinfo.id and auctionbids.position=1 and is_preceded=1
-                order by budget desc
+                join auctionbids on auctionbids.forecastInfo_id=forecastinfo.id and auctionbids.position=4 and is_preceded=1 and price>100
+                group by keyword
+                order by budget desc 
         ");
     }
 }

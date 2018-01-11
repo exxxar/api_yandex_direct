@@ -55,16 +55,69 @@ class YandexForecastInfo extends Command implements YandexDirectConst
      */
     public function handle()
     {
+
+        /*      $words_from_db = Keywords::
+                  orderBy('id',  'asc')
+                  ->limit(10000)
+                      ->offset(10000)
+                  ->get();*/
+
+
+        /*        DELETE f
+        FROM forecastinfo f
+        WHERE f.Keywords_id = 82023*/
+
+        /*
+                DELETE a
+        FROM auctionbids a
+        INNER JOIN forecastinfo f
+        ON a.forecastInfo_id = f.id
+        WHERE f.Keywords_id = 82023*/
+
+        /*  foreach ($words_from_db  as $kw) {
+
+              $felem = DB::select(
+                  "SELECT COUNT(`Keywords_id`) as `cnt` FROM `forecastinfo` WHERE `Keywords_id`=? GROUP by `Keywords_id` ORDER BY  COUNT(`Keywords_id`) DESC",[$kw->id]
+              );
+
+              try {
+                  if ($felem[0]->cnt > 2) {
+
+                     error_log("=>".$felem[0]->cnt );
+                      DB::select(
+                          "DELETE a FROM auctionbids a INNER JOIN forecastinfo f ON a.forecastInfo_id = f.id WHERE f.Keywords_id = ?", [$kw->id]
+                      );
+
+                      DB::select(
+                          "DELETE f FROM forecastinfo f WHERE f.Keywords_id=? ", [$kw->id]
+                      );
+
+                  }
+
+              }
+              catch(\Exception $e){
+
+              }
+          }
+
+          $felem = DB::select(
+              "SELECT COUNT(`Keywords_id`) as `cnt` FROM `forecastinfo` WHERE `Keywords_id`=? GROUP by `Keywords_id` ORDER BY  COUNT(`Keywords_id`) DESC",[82023]
+          );
+          error_log($felem[0]->cnt);
+          return;
+          //$this->checkLenAndSlice("Content-Type: text/plain");
+          // return;*/
         $this->doMain();
     }
 
-    public function doMain($reverse = true)
+    public function doMain($reverse = false)
     {
         $this->doStep0();
 
         while (true) {
             $words_from_db = Keywords::where('check', null)
                 ->orderBy('id', $reverse ? 'DESC' : 'ASC')
+                ->limit(300)
                 ->get();
 
 
@@ -78,14 +131,15 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                 try {
                     $this->doStep1($select_db_word);//режим сбора
                 } catch (ApiException $ae) {
-                    if ($ae->getCode()==self::QUERY_LIMIT_EXCEEDED)
+                    error_log("[1]=>" . $ae->getMessage() . " [" . $ae->getCode() . "]");
+                    if ($ae->getCode() == self::QUERY_LIMIT_EXCEEDED)
                         $this->doStep1_1($select_db_word);
                 }
 
                 try {
                     $this->doStep2();
                 } catch (ApiException $ae) {
-                    error_log("[2]=>" . $ae->getMessage());
+                    error_log("[2]=>" . $ae->getMessage() . " [" . $ae->getCode() . "]");
                 }
 
 
@@ -124,19 +178,28 @@ class YandexForecastInfo extends Command implements YandexDirectConst
         unset($suggested_words);
     }
 
+
+    /*
+
+       SELECT t1.*
+       FROM keywords as t1
+       LEFT JOIN forecastinfo t2 ON t1.id = t2.Keywords_id
+       WHERE t2.id IS NULL
+
+    */
+
     protected function doStep2($reverse = false, $regions = [1])
     {
-        $keywords_without_forecast = Keywords::whereNotIn('id', function ($query) use ($reverse) {
-            $query->select('Keywords_id')
-                ->from('forecastinfo')
-                ->orderBy('id', $reverse ? 'DESC' : 'ASC');
-        })
-            ->orderBy('id', $reverse ? 'DESC' : 'ASC')
-            ->limit(round(self::MAX_FORECAST / 2))
-            ->get();
+
+        $keywords_without_forecast = DB::select(
+            'SELECT t1.*
+              FROM keywords as t1
+              LEFT JOIN forecastinfo t2 ON t1.id = t2.Keywords_id
+             WHERE t2.id IS NULL LIMIT ?', [round(self::MAX_FORECAST / 2)]
+        );
+
 
         if (count($keywords_without_forecast) < round(self::MAX_FORECAST / 2)) {
-            $this->log->info("Еще не набралось нужное колличество ключевых слов:" . count($keywords_without_forecast) . "\\" . self::MAX_FORECAST);
             return;
         }
 
@@ -144,7 +207,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
         //в буфер помимо ключевого слова добавляется сразу же его уточненная копия, именно по этой причине
         //мы делим максимально возможное число слов в отчете пополам
         foreach ($keywords_without_forecast as $kw) {
-            if (strlen(trim($kw->keyword)) > 0) {
+            if (strlen(trim($this->checkLenAndSlice($kw->keyword))) > 0) {
                 array_push($buf, $this->checkLenAndSlice($kw->keyword));
                 array_push($buf, $this->divideAndPrecede($this->checkLenAndSlice($kw->keyword)));
             }
@@ -156,6 +219,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
 
         $this->doRandomInterval();
         while (($reports = $this->api->getForecastList())[0]->getStatusForecast() == "Pending") {
+
             $this->doRandomInterval();
         }
 
@@ -163,9 +227,12 @@ class YandexForecastInfo extends Command implements YandexDirectConst
 
 
         foreach ($report->getPhrases() as $wr) {
+
             //каждый репорт содержит большой набор словоформ
             try {
                 $fKwId = Keywords::where("keyword", $this->restoringPrecede($wr->getPhrase()))->first();
+
+                error_log("id=" . $fKwId->id . "=>" . $wr->getPhrase());
                 if (empty($fKwId)) {
 
                     $inserted_id = Keywords::insertGetId([
@@ -179,15 +246,17 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                     error_log("в этом моменте у нас нет ключевого слова, но мы пытаемся добавить id " . $fKwId->id);
                 }
 
-                //SELECT COUNT(`Keywords_id`), `Keywords_id` FROM forecastinfo WHERE `Keywords_id`=1
+                $felem = DB::select(
+                    "SELECT COUNT(`Keywords_id`) as `cnt` FROM `forecastinfo` WHERE `Keywords_id`=? GROUP by `Keywords_id` ORDER BY  COUNT(`Keywords_id`) DESC", [$fKwId->id]
+                );
+                if (isset($felem[0]->cnt))
+                    if ($felem[0]->cnt>=2)
+                        continue;
 
-                $fcount = Forecastinfo::select('Keywords_id', DB::raw('count(Keywords_id)'))
-                    ->groupBy('Keywords_id')
-                    ->where("Keywords_id", $fKwId->id)
-                    ->count();
+                error_log(isset($felem[0]->cnt) ? "есть->".$felem[0]->cnt : "нету");
 
-                if (!empty($fKwId) && $fcount < 2) {
-
+                if (!empty($fKwId) &&  $felem[0]->cnt < 2) {
+                    error_log("TEST");
                     $forecastInfoId = Forecastinfo::insertGetId(
                         [
                             'min' => $wr->getMin(),
@@ -275,7 +344,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
     {
         //обращаемся к вордстату по выбранному слову
         $this->api->createNewWordstatReport($region,
-               $this->checkLenAndSlice($select_db_word->keyword));
+            $this->checkLenAndSlice($select_db_word->keyword));
 
         $this->doRandomInterval();
         //ждём завершение формирование отчета вордстата

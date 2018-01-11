@@ -30,27 +30,25 @@ trait YandexBasicCommand
 
     public function doStep0($fname = "words.txt", $refresh = false)
     {
-        $this->log->info('Этап 0 - начало работы');
         if (Keywords::count() == 0 || $refresh == True) {
-            $this->log->info($refresh ? "Режим обновления" : "В таблице 'Keywords' отсутствуют слова, получаем из файла");
             $contents = Storage::disk('public')->get($fname);
             $contents = preg_split('/[\s,]+\n/', $contents);
             $index = 0;
             foreach ($contents as $c) {
                 $index++;
                 if (trim($c)) {
-                    $this->log->info($index . "->" . $c);
+
                     try {
-                        $kw = Keywords::where("keyword", $c)->first();
+                        $kw = Keywords::where("keyword", $this->checkLenAndSlice($this->restoringPrecede($c)))->first();
                         if (empty($kw)) {
                             Keywords::insertGetId(
                                 [
-                                    'keyword' => $c,
+                                    'keyword' => $this->checkLenAndSlice($this->restoringPrecede($c)),
                                     'created_at' => Carbon::now(),
                                     'updated_at' => Carbon::now()
                                 ]
                             );
-                            $this->log->info("Добавляем слово:$c");
+
                         }
 
                     } catch (\Exception $e) {
@@ -161,22 +159,23 @@ trait YandexBasicCommand
     }
 
     public function checkLenAndSlice($keyword) {
-        $text = mb_split(" ",$keyword);
+
+        $text = mb_split("[ -:/]",$keyword);
         $new_keyword = "";
         $index = 7;
-        if (count($text)>7) {
             foreach ($text as $word) {
-                $new_keyword .= trim($word)." ";
-                $index--;
+                if (strlen(trim($word))>0) {
+                    $new_keyword .= trim($word) . " ";
+                    $index--;
+                }
                 if ($index==0)
                     break;
             }
-        }
-        return count($text)>7?trim( $new_keyword):$keyword;
+        return trim( $new_keyword);
     }
 
     public function word_count($keyword){
-        $text = mb_split(" ",$keyword);
+        $text = mb_split("[ -:/]",$keyword);
         return count($text);
     }
 }
