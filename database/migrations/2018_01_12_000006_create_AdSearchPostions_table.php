@@ -26,24 +26,9 @@ class CreateAdsearchpostionsTable extends Migration
             $table->integer('search_engine')->nullable();
             $table->tinyInteger('is_ad')->nullable();
             $table->unsignedInteger('region_id');
-            $table->unsignedInteger('Url_id');
+            $table->unsignedInteger('AdSearchPostions_site_id');
             $table->unsignedInteger('Keywords_id');
-
-            $table->index(["Keywords_id"], 'fk_AdSearchPostions_Keywords1_idx');
-
-            $table->index(["Url_id"], 'fk_AdSearchPostions_Url1_idx');
             $table->nullableTimestamps();
-
-
-            $table->foreign('Url_id', 'fk_AdSearchPostions_Url1_idx')
-                ->references('id')->on('Url')
-                ->onDelete('no action')
-                ->onUpdate('no action');
-
-            $table->foreign('Keywords_id', 'fk_AdSearchPostions_Keywords1_idx')
-                ->references('id')->on('Keywords')
-                ->onDelete('no action')
-                ->onUpdate('no action');
         });
     }
 

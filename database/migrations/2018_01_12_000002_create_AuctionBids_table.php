@@ -2,16 +2,16 @@
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
-class CreateContextcoverageTable extends Migration
+class CreateAuctionbidsTable extends Migration
 {
     /**
      * Schema table name to migrate
      * @var string
      */
-    public $set_schema_table = 'ContextCoverage';
+    public $set_schema_table = 'AuctionBids';
     /**
      * Run the migrations.
-     * @table ContextCoverage
+     * @table AuctionBids
      *
      * @return void
      */
@@ -21,18 +21,11 @@ class CreateContextcoverageTable extends Migration
         Schema::create($this->set_schema_table, function (Blueprint $table) {
             $table->engine = 'InnoDB';
             $table->increments('id');
-            $table->integer('probability')->nullable();
-            $table->integer('price')->nullable();
-            $table->dateTime('updated_at')->nullable();
-            $table->unsignedInteger('Keywords_id');
-
-            $table->index(["Keywords_id"], 'fk_ContextCoverage_Keywords1_idx');
-
-
-            $table->foreign('Keywords_id', 'fk_ContextCoverage_Keywords1_idx')
-                ->references('id')->on('Keywords')
-                ->onDelete('no action')
-                ->onUpdate('no action');
+            $table->unsignedInteger('position')->comment('Позиция показа');
+            $table->float('bid')->nullable()->comment('Минимальная ставка за указанную позицию');
+            $table->float('price')->nullable()->comment('Списываемая цена для указанной позиции ');
+            $table->unsignedInteger('forecastInfo_id');
+            $table->nullableTimestamps();
         });
     }
 

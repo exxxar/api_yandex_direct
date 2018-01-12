@@ -34,15 +34,7 @@ class CreateGroupinfoTable extends Migration
             $table->integer('min_search_price')->nullable();
             $table->integer('current_search_price')->nullable();
             $table->unsignedInteger('Keywords_id');
-
-            $table->index(["Keywords_id"], 'fk_GroupInfo_Keywords1_idx');
             $table->nullableTimestamps();
-
-
-            $table->foreign('Keywords_id', 'fk_GroupInfo_Keywords1_idx')
-                ->references('id')->on('Keywords')
-                ->onDelete('no action')
-                ->onUpdate('no action');
         });
     }
 

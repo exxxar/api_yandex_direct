@@ -2,16 +2,16 @@
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
-class CreateKeywordsTable extends Migration
+class CreateUriTable extends Migration
 {
     /**
      * Schema table name to migrate
      * @var string
      */
-    public $set_schema_table = 'Keywords';
+    public $set_schema_table = 'uri';
     /**
      * Run the migrations.
-     * @table Keywords
+     * @table uri
      *
      * @return void
      */
@@ -20,12 +20,11 @@ class CreateKeywordsTable extends Migration
         if (Schema::hasTable($this->set_schema_table)) return;
         Schema::create($this->set_schema_table, function (Blueprint $table) {
             $table->engine = 'InnoDB';
-            $table->increments('id');
-            $table->string('keyword')->nullable();
-            $table->tinyInteger('check')->nullable();
+            $table->increments('uri_id');
+            $table->string('uri')->nullable();
+            $table->unsignedInteger('site_id');
 
-            $table->unique(["keyword"], 'keyword_UNIQUE');
-            $table->nullableTimestamps();
+            $table->unique(["uri_id"], 'uri_id_UNIQUE');
         });
     }
 

@@ -2,16 +2,16 @@
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
-class CreateAuctionbidsTable extends Migration
+class CreateContextcoverageTable extends Migration
 {
     /**
      * Schema table name to migrate
      * @var string
      */
-    public $set_schema_table = 'AuctionBids';
+    public $set_schema_table = 'ContextCoverage';
     /**
      * Run the migrations.
-     * @table AuctionBids
+     * @table ContextCoverage
      *
      * @return void
      */
@@ -21,18 +21,10 @@ class CreateAuctionbidsTable extends Migration
         Schema::create($this->set_schema_table, function (Blueprint $table) {
             $table->engine = 'InnoDB';
             $table->increments('id');
-            $table->unsignedInteger('position');
-            $table->float('bid')->nullable();
-            $table->float('price')->nullable();
-            $table->integer('forecastInfo_id')->unsigned()->index();
-
-            $table->index(["forecastInfo_id"], 'fk_AuctionBids_forecastInfo1_idx');
-            $table->nullableTimestamps();
-
-            $table->foreign('forecastInfo_id', 'fk_AuctionBids_forecastInfo1_idx')
-                ->references('id')->on('forecastInfo')
-                ->onDelete('no action')
-                ->onUpdate('no action');
+            $table->integer('probability')->nullable();
+            $table->integer('price')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->unsignedInteger('Keywords_id');
         });
     }
 

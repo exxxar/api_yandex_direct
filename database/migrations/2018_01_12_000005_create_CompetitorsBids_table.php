@@ -24,14 +24,6 @@ class CreateCompetitorsbidsTable extends Migration
             $table->integer('element')->nullable();
             $table->dateTime('updated_at')->nullable();
             $table->unsignedInteger('Keywords_id');
-
-            $table->index(["Keywords_id"], 'fk_CompetitorsBids_Keywords1_idx');
-
-
-            $table->foreign('Keywords_id', 'fk_CompetitorsBids_Keywords1_idx')
-                ->references('id')->on('Keywords')
-                ->onDelete('no action')
-                ->onUpdate('no action');
         });
     }
 

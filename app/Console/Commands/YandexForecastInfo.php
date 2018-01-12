@@ -234,7 +234,6 @@ class YandexForecastInfo extends Command implements YandexDirectConst
 
                 error_log("id=" . $fKwId->id . "=>" . $wr->getPhrase());
                 if (empty($fKwId)) {
-
                     $inserted_id = Keywords::insertGetId([
                         'keyword' => $this->restoringPrecede($wr->getPhrase()),
                         'created_at' => Carbon::now(),
@@ -249,14 +248,15 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                 $felem = DB::select(
                     "SELECT COUNT(`Keywords_id`) as `cnt` FROM `forecastinfo` WHERE `Keywords_id`=? GROUP by `Keywords_id` ORDER BY  COUNT(`Keywords_id`) DESC", [$fKwId->id]
                 );
-                if (isset($felem[0]->cnt))
-                    if ($felem[0]->cnt>=2)
-                        continue;
+                $isAccept= false;
+                try {
+                    if ($felem[0]->cnt < 2||!isset($felem[0]->cnt))
+                        $isAccept = true;
+                }catch (\Exception $e) {
+                    $isAccept = true;
+                }
 
-                error_log(isset($felem[0]->cnt) ? "есть->".$felem[0]->cnt : "нету");
-
-                if (!empty($fKwId) &&  $felem[0]->cnt < 2) {
-                    error_log("TEST");
+                if ($isAccept) {
                     $forecastInfoId = Forecastinfo::insertGetId(
                         [
                             'min' => $wr->getMin(),

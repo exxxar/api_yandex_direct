@@ -2,16 +2,16 @@
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
-class CreateUrlTable extends Migration
+class CreateSiteTable extends Migration
 {
     /**
      * Schema table name to migrate
      * @var string
      */
-    public $set_schema_table = 'Url';
+    public $set_schema_table = 'site';
     /**
      * Run the migrations.
-     * @table Url
+     * @table site
      *
      * @return void
      */
@@ -20,9 +20,10 @@ class CreateUrlTable extends Migration
         if (Schema::hasTable($this->set_schema_table)) return;
         Schema::create($this->set_schema_table, function (Blueprint $table) {
             $table->engine = 'InnoDB';
-            $table->increments('id');
-            $table->string('url')->nullable();
-            $table->nullableTimestamps();
+            $table->increments('site_id');
+            $table->string('site')->nullable();
+
+            $table->unique(["site"], 'url_UNIQUE');
         });
     }
 
