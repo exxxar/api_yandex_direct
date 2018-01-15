@@ -1,7 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
-
+namespace app\Console\Commands;
 
 use App\AuctionBids;
 use App\Forecastinfo;
@@ -55,7 +54,8 @@ class YandexForecastInfo extends Command implements YandexDirectConst
      */
     public function handle()
     {
-
+//$this->checkLenAndSlice("12:-\+*#$ 5 /кредит /под");
+       // return;
         /*      $words_from_db = Keywords::
                   orderBy('id',  'asc')
                   ->limit(10000)
@@ -129,7 +129,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                 unset($kw);
 
                 try {
-                    $this->doStep1($select_db_word);//режим сбора
+                    $this->doStep1($select_db_word);
                 } catch (ApiException $ae) {
                     error_log("[1]=>" . $ae->getMessage() . " [" . $ae->getCode() . "]");
                     if ($ae->getCode() == self::QUERY_LIMIT_EXCEEDED)
@@ -155,12 +155,8 @@ class YandexForecastInfo extends Command implements YandexDirectConst
 
     public function doStep1($select_db_word)
     {
-        //получаем список подсказок по слову до тех пор пока это возможно
         $suggested_words = $this->api->getKeywordsSuggestion($this->checkLenAndSlice($select_db_word->keyword));
 
-        $this->log->info("Получаем список подсказок по ключевому слову!");
-        //проходим циклом по подсказкам, проверяем нет ли слова в бд
-        //если нет - добавляем слово в бд
         foreach ($suggested_words as $sw) {
             $fKw = Keywords::where("keyword", $this->checkLenAndSlice($sw))->first();
             if (empty($fKw)) {
@@ -195,7 +191,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
             'SELECT t1.*
               FROM keywords as t1
               LEFT JOIN forecastinfo t2 ON t1.id = t2.Keywords_id
-             WHERE t2.id IS NULL LIMIT ?', [round(self::MAX_FORECAST / 2)]
+             WHERE t2.id IS NULL LIMIT ? ', [round(self::MAX_FORECAST / 2)]
         );
 
 
@@ -204,10 +200,13 @@ class YandexForecastInfo extends Command implements YandexDirectConst
         }
 
         $buf = [];
-        //в буфер помимо ключевого слова добавляется сразу же его уточненная копия, именно по этой причине
-        //мы делим максимально возможное число слов в отчете пополам
+
         foreach ($keywords_without_forecast as $kw) {
+
+           // error_log("Добавляем  слово[1]=>".$kw->keyword);
             if (strlen(trim($this->checkLenAndSlice($kw->keyword))) > 0) {
+               // error_log("Добавляем  слово[2]=>".$this->checkLenAndSlice($kw->keyword));
+
                 array_push($buf, $this->checkLenAndSlice($kw->keyword));
                 array_push($buf, $this->divideAndPrecede($this->checkLenAndSlice($kw->keyword)));
             }
@@ -228,11 +227,11 @@ class YandexForecastInfo extends Command implements YandexDirectConst
 
         foreach ($report->getPhrases() as $wr) {
 
-            //каждый репорт содержит большой набор словоформ
+
             try {
                 $fKwId = Keywords::where("keyword", $this->restoringPrecede($wr->getPhrase()))->first();
 
-                error_log("id=" . $fKwId->id . "=>" . $wr->getPhrase());
+                //error_log("id=" . $fKwId->id . "=>" . $wr->getPhrase());
                 if (empty($fKwId)) {
                     $inserted_id = Keywords::insertGetId([
                         'keyword' => $this->restoringPrecede($wr->getPhrase()),
@@ -242,7 +241,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
 
                     $fKwId = Keywords::findOne($inserted_id);
 
-                    error_log("в этом моменте у нас нет ключевого слова, но мы пытаемся добавить id " . $fKwId->id);
+
                 }
 
                 $felem = DB::select(
@@ -250,13 +249,17 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                 );
                 $isAccept= false;
                 try {
+                   // error_log("CNT=>".$felem[0]->cnt);
+                   //error_log("CNT ISSET=>".(isset($felem[0]->cnt)?"TRUE":"FALSE"));
                     if ($felem[0]->cnt < 2||!isset($felem[0]->cnt))
                         $isAccept = true;
                 }catch (\Exception $e) {
                     $isAccept = true;
                 }
-
+              //  error_log("WE ARE HERE=>".($isAccept?"TRUE":"FALSE"));
                 if ($isAccept) {
+
+                    error_log("[".$fKwId->id."]=>".$wr->getPhrase());
                     $forecastInfoId = Forecastinfo::insertGetId(
                         [
                             'min' => $wr->getMin(),
@@ -331,7 +334,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
             unset($fcount);
         }
         unset($report);
-        //удаляем репорт
+
         $forecast_reports = $this->api->getForecastList();
         foreach ($forecast_reports as $report) {
             $this->api->deleteForecastReport($report->getForecastID());
@@ -342,26 +345,26 @@ class YandexForecastInfo extends Command implements YandexDirectConst
 
     public function doStep1_1($select_db_word, $region = [1])
     {
-        //обращаемся к вордстату по выбранному слову
+
         $this->api->createNewWordstatReport($region,
             $this->checkLenAndSlice($select_db_word->keyword));
 
         $this->doRandomInterval();
-        //ждём завершение формирование отчета вордстата
+
         while (($reports = $this->api->getWordstatReportList())[0]->getStatusReport() == "Pending") {
             $this->doRandomInterval();
         }
 
-        //берем репорт по айди
+
         $report = $this->api->getWordstatReport($reports[0]->getReportID());
         foreach ($report as $wr) {
-            //каждый репорт содержит большой набор словоформ
+
             foreach ($wr->getSearchedWith() as $sw) {
-                $fKwId = Keywords::where("keyword", $sw->getPhrase())->first();
+                $fKwId = Keywords::where("keyword", $this->checkLenAndSlice($sw->getPhrase()))->first();
                 if (empty($fKwId))
                     Keywords::insertGetId(
                         [
-                            'keyword' => $sw->getPhrase(),
+                            'keyword' => $this->checkLenAndSlice($sw->getPhrase()),
                             'created_at' => Carbon::now(),
                             'updated_at' => Carbon::now()
                         ]
@@ -371,7 +374,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
             }
         }
         unset($report);
-        //удаляем текущий репорт
+
         $this->api->deleteWordstatReport($reports[0]->getReportID());
     }
 

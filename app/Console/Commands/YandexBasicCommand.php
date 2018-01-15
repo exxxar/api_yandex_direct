@@ -160,10 +160,13 @@ trait YandexBasicCommand
 
     public function checkLenAndSlice($keyword) {
 
-        $text = mb_split("[ -:/]",$keyword);
+        $keyword = preg_replace("/[-:+#*$\\\\\/]/i"," ",$keyword);
+
+        $text = mb_split("[\s]+",$keyword);
         $new_keyword = "";
         $index = 7;
             foreach ($text as $word) {
+               // error_log($word);
                 if (strlen(trim($word))>0) {
                     $new_keyword .= trim($word) . " ";
                     $index--;
