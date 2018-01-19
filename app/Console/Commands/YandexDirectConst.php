@@ -16,5 +16,6 @@ interface YandexDirectConst
     const MAX_KEYWORDS = 199;
     const MAX_FORECAST = 99;
     const QUERY_LIMIT_EXCEEDED = 56;
+    const SERVER_ERROR = 500;
 
 }

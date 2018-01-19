@@ -181,4 +181,5 @@ trait YandexBasicCommand
         $text = mb_split("[ -:/]",$keyword);
         return count($text);
     }
+
 }

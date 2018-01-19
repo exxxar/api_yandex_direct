@@ -55,7 +55,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
     public function handle()
     {
 //$this->checkLenAndSlice("12:-\+*#$ 5 /кредит /под");
-       // return;
+        // return;
         /*      $words_from_db = Keywords::
                   orderBy('id',  'asc')
                   ->limit(10000)
@@ -107,7 +107,61 @@ class YandexForecastInfo extends Command implements YandexDirectConst
           return;
           //$this->checkLenAndSlice("Content-Type: text/plain");
           // return;*/
+
+       //$this->doPrepareAllKeywords();
+      // return;
         $this->doMain();
+    }
+
+    public function doPrepareAllKeywords(){
+        $words_from_db_count = Keywords::count();
+
+        $word_step = round($words_from_db_count/300);
+        $offset = 0;
+        while(($words_from_db = Keywords::limit($offset)->offset($offset)->get())){
+
+            foreach($words_from_db as $word){
+
+                $w = Keywords::where('keyword', $this->checkLenAndSlice($word->keyword) )
+                    ->first();
+
+
+                $w2 = Keywords::where('keyword',$word->keyword )
+                    ->first();
+
+                if (isset($w2)&&isset($w)){
+
+                    if ($w2->keyword!=$w->keyword)
+                        Keywords::destroy($w2->id);
+
+                }
+
+                if (isset($w2)&&!isset($w))
+                    Keywords::destroy($w2->id);
+
+                if (!isset($w))
+                {
+
+                    Keywords::insertGetId(
+                        [
+                            'keyword' => $this->checkLenAndSlice($word->keyword),
+                            'created_at' => Carbon::now(),
+                            'updated_at' => Carbon::now()
+                        ]
+                    );
+                }
+
+
+
+            }
+
+            $offset +=$word_step;
+            error_log("offset=>".$offset." count=>".$words_from_db_count);
+            if ($offset>$words_from_db_count)
+                break;
+        }
+
+
     }
 
     public function doMain($reverse = false)
@@ -130,10 +184,12 @@ class YandexForecastInfo extends Command implements YandexDirectConst
 
                 try {
                     $this->doStep1($select_db_word);
+                    $this->doStep1_1($select_db_word);
                 } catch (ApiException $ae) {
                     error_log("[1]=>" . $ae->getMessage() . " [" . $ae->getCode() . "]");
-                    if ($ae->getCode() == self::QUERY_LIMIT_EXCEEDED)
-                        $this->doStep1_1($select_db_word);
+
+                    if ($ae->getCode() == self::SERVER_ERROR)
+                        break;
                 }
 
                 try {
@@ -141,6 +197,9 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                 } catch (ApiException $ae) {
                     error_log("[2]=>" . $ae->getMessage() . " [" . $ae->getCode() . "]");
                 }
+
+
+
 
 
             }
@@ -187,11 +246,17 @@ class YandexForecastInfo extends Command implements YandexDirectConst
     protected function doStep2($reverse = false, $regions = [1])
     {
 
+        //todo: сделать компаратор 2х выдач
+        /*       $keywords_without_forecast = DB::select(
+               'SELECT t1.*
+                     FROM keywords as t1
+                     LEFT JOIN forecastinfo t2 ON t1.id = t2.Keywords_id
+                    WHERE t2.id IS NULL LIMIT ? ', [round(self::MAX_FORECAST / 2)]
+           );*/
         $keywords_without_forecast = DB::select(
-            'SELECT t1.*
-              FROM keywords as t1
-              LEFT JOIN forecastinfo t2 ON t1.id = t2.Keywords_id
-             WHERE t2.id IS NULL LIMIT ? ', [round(self::MAX_FORECAST / 2)]
+            ' select t1.* from keywords as t1
+            where t1.id not in
+            (select t2.Keywords_id from forecastinfo t2) LIMIT ? ', [round(self::MAX_FORECAST / 2)]
         );
 
 
@@ -203,9 +268,9 @@ class YandexForecastInfo extends Command implements YandexDirectConst
 
         foreach ($keywords_without_forecast as $kw) {
 
-           // error_log("Добавляем  слово[1]=>".$kw->keyword);
+            error_log("Добавляем  слово[1]=>" . $kw->keyword);
             if (strlen(trim($this->checkLenAndSlice($kw->keyword))) > 0) {
-               // error_log("Добавляем  слово[2]=>".$this->checkLenAndSlice($kw->keyword));
+                error_log("Добавляем  слово[2]=>" . $this->checkLenAndSlice($kw->keyword));
 
                 array_push($buf, $this->checkLenAndSlice($kw->keyword));
                 array_push($buf, $this->divideAndPrecede($this->checkLenAndSlice($kw->keyword)));
@@ -231,7 +296,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
             try {
                 $fKwId = Keywords::where("keyword", $this->restoringPrecede($wr->getPhrase()))->first();
 
-                //error_log("id=" . $fKwId->id . "=>" . $wr->getPhrase());
+                error_log("id=" . $fKwId->id . "=>" . $wr->getPhrase());
                 if (empty($fKwId)) {
                     $inserted_id = Keywords::insertGetId([
                         'keyword' => $this->restoringPrecede($wr->getPhrase()),
@@ -247,19 +312,19 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                 $felem = DB::select(
                     "SELECT COUNT(`Keywords_id`) as `cnt` FROM `forecastinfo` WHERE `Keywords_id`=? GROUP by `Keywords_id` ORDER BY  COUNT(`Keywords_id`) DESC", [$fKwId->id]
                 );
-                $isAccept= false;
+                $isAccept = false;
                 try {
-                   // error_log("CNT=>".$felem[0]->cnt);
-                   //error_log("CNT ISSET=>".(isset($felem[0]->cnt)?"TRUE":"FALSE"));
-                    if ($felem[0]->cnt < 2||!isset($felem[0]->cnt))
+                    error_log("CNT=>" . $felem[0]->cnt);
+                    error_log("CNT ISSET=>" . (isset($felem[0]->cnt) ? "TRUE" : "FALSE"));
+                    if ($felem[0]->cnt < 2 || !isset($felem[0]->cnt))
                         $isAccept = true;
-                }catch (\Exception $e) {
+                } catch (\Exception $e) {
                     $isAccept = true;
                 }
-              //  error_log("WE ARE HERE=>".($isAccept?"TRUE":"FALSE"));
+                error_log("WE ARE HERE=>" . ($isAccept ? "TRUE" : "FALSE"));
                 if ($isAccept) {
 
-                    error_log("[".$fKwId->id."]=>".$wr->getPhrase());
+                    error_log("[" . $fKwId->id . "]=>" . $wr->getPhrase());
                     $forecastInfoId = Forecastinfo::insertGetId(
                         [
                             'min' => $wr->getMin(),
@@ -360,6 +425,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
         foreach ($report as $wr) {
 
             foreach ($wr->getSearchedWith() as $sw) {
+                error_log("Фраза из вордстата=".$this->checkLenAndSlice($sw->getPhrase()));
                 $fKwId = Keywords::where("keyword", $this->checkLenAndSlice($sw->getPhrase()))->first();
                 if (empty($fKwId))
                     Keywords::insertGetId(
