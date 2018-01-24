@@ -195,6 +195,7 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                 try {
                     $this->doStep2();
                 } catch (ApiException $ae) {
+
                     error_log("[2]=>" . $ae->getMessage() . " [" . $ae->getCode() . "]");
                 }
 
@@ -219,13 +220,14 @@ class YandexForecastInfo extends Command implements YandexDirectConst
         foreach ($suggested_words as $sw) {
             $fKw = Keywords::where("keyword", $this->checkLenAndSlice($sw))->first();
             if (empty($fKw)) {
-                Keywords::insertGetId(
-                    [
-                        'keyword' => $this->checkLenAndSlice($sw),
-                        'created_at' => Carbon::now(),
-                        'updated_at' => Carbon::now()
-                    ]
-                );
+                if ($this->isNormallyLen($sw))
+                    Keywords::insertGetId(
+                        [
+                            'keyword' => $this->checkLenAndSlice($sw),
+                            'created_at' => Carbon::now(),
+                            'updated_at' => Carbon::now()
+                        ]
+                    );
             }
             unset($fKw);
         }
@@ -269,15 +271,20 @@ class YandexForecastInfo extends Command implements YandexDirectConst
         foreach ($keywords_without_forecast as $kw) {
 
             error_log("Добавляем  слово[1]=>" . $kw->keyword);
-            if (strlen(trim($this->checkLenAndSlice($kw->keyword))) > 0) {
+            if (strlen(trim($this->checkLenAndSlice($kw->keyword))) > 0&&$this->isNormallyLen($kw->keyword)) {
                 error_log("Добавляем  слово[2]=>" . $this->checkLenAndSlice($kw->keyword));
 
                 array_push($buf, $this->checkLenAndSlice($kw->keyword));
                 array_push($buf, $this->divideAndPrecede($this->checkLenAndSlice($kw->keyword)));
             }
+            else
+                Keywords::destroy($kw->id);
+
         }
 
+
         $this->api->createNewForecast($buf, $regions);
+
         unset($keywords_without_forecast);
         unset($buf);
 
@@ -298,14 +305,15 @@ class YandexForecastInfo extends Command implements YandexDirectConst
 
                 error_log("id=" . $fKwId->id . "=>" . $wr->getPhrase());
                 if (empty($fKwId)) {
-                    $inserted_id = Keywords::insertGetId([
-                        'keyword' => $this->restoringPrecede($wr->getPhrase()),
-                        'created_at' => Carbon::now(),
-                        'updated_at' => Carbon::now()
-                    ]);
+                    if ($this->isNormallyLen($wr->getPhrase())) {
+                        $inserted_id = Keywords::insertGetId([
+                            'keyword' => $this->restoringPrecede($wr->getPhrase()),
+                            'created_at' => Carbon::now(),
+                            'updated_at' => Carbon::now()
+                        ]);
 
-                    $fKwId = Keywords::findOne($inserted_id);
-
+                        $fKwId = Keywords::findOne($inserted_id);
+                    }
 
                 }
 
@@ -428,13 +436,14 @@ class YandexForecastInfo extends Command implements YandexDirectConst
                 error_log("Фраза из вордстата=".$this->checkLenAndSlice($sw->getPhrase()));
                 $fKwId = Keywords::where("keyword", $this->checkLenAndSlice($sw->getPhrase()))->first();
                 if (empty($fKwId))
-                    Keywords::insertGetId(
-                        [
-                            'keyword' => $this->checkLenAndSlice($sw->getPhrase()),
-                            'created_at' => Carbon::now(),
-                            'updated_at' => Carbon::now()
-                        ]
-                    );
+                    if ($this->isNormallyLen($sw->getPhrase()))
+                        Keywords::insertGetId(
+                            [
+                                'keyword' => $this->checkLenAndSlice($sw->getPhrase()),
+                                'created_at' => Carbon::now(),
+                                'updated_at' => Carbon::now()
+                            ]
+                        );
 
                 unset($fKwId);
             }

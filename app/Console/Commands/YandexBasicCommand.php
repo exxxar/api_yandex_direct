@@ -158,6 +158,8 @@ trait YandexBasicCommand
         return $buf;
     }
 
+
+
     public function checkLenAndSlice($keyword) {
 
         $keyword = preg_replace("/[-:+#*$\\\\\/]/i"," ",$keyword);
@@ -180,6 +182,21 @@ trait YandexBasicCommand
     public function word_count($keyword){
         $text = mb_split("[ -:/]",$keyword);
         return count($text);
+    }
+
+    public function isNormallyLen($keyword){
+        $keyword = $this->checkLenAndSlice($keyword);
+        $text = mb_split("[\s]+",$keyword);
+        $excuses_count = $word_count = 0;
+
+        foreach ($text as $word) {
+            if (strlen($word)>2)
+                $word_count++;
+            else
+                $excuses_count++;
+
+        }
+        return $word_count>=$excuses_count?true:false;
     }
 
 }
